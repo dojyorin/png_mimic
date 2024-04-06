@@ -1,0 +1,1 @@
+export type ChunkType = "IHDR" | "IDAT" | "IEND" | "gAMA";
