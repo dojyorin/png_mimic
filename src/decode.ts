@@ -1,7 +1,7 @@
 import {byteConcat, deflateDecode, u8Decode} from "../deps.ts";
 import {crc32} from "./crc.ts";
 import {type ChunkType} from "./chunk.ts";
-import {PNG_PIXEL, PNG_MAGIC} from "./static.ts";
+import {PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_FILTER, PNG_MAGIC} from "./static.ts";
 
 export async function pngDecode(data:Uint8Array):Promise<Uint8Array>{
     for(let i = 0; i < PNG_MAGIC.byteLength; i++){
@@ -19,7 +19,7 @@ export async function pngDecode(data:Uint8Array):Promise<Uint8Array>{
         const body = data.slice(i, i += size);
         const hash = new DataView(data.slice(i, i += 4).buffer).getInt32(0);
 
-        if(crc32(byteConcat(name, body)) !== hash){
+        if(crc32(name, body) !== hash){
             throw new Error();
         }
 
@@ -31,20 +31,21 @@ export async function pngDecode(data:Uint8Array):Promise<Uint8Array>{
     }
 
     const view = new DataView(chunk.IHDR.buffer);
-    const square = view.getUint32(0);
-    const pad = new DataView(chunk.gAMA.buffer).getUint32(0);
+    const width = view.getUint32(0);
     const image = await deflateDecode(chunk.IDAT, "deflate");
 
-    if(square !== view.getUint32(4) || view.getUint8(8) !== 0x08 || view.getUint8(9) !== 0x02){
+    if(view.getUint8(8) !== PNG_COLOR_DEPTH || view.getUint8(9) !== PNG_COLOR_TYPE){
         throw new Error();
     }
 
     const rows:Uint8Array[] = [];
     for(let i = 0; i < image.byteLength;){
-        const width = square * PNG_PIXEL;
-        const row = image.slice(++i, i += width);
-        rows.push(row);
+        if(new DataView(image.slice(i, ++i).buffer).getUint8(0) !== PNG_FILTER){
+            throw new Error();
+        }
+
+        rows.push(image.slice(i, i += width * PNG_BYTE_PER_PIXEL));
     }
 
-    return byteConcat(...rows).slice(0, -pad);
+    return byteConcat(...rows).slice(0, -new DataView(chunk.gAMA.buffer).getUint32(0));
 }
