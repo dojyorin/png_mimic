@@ -1,2 +1,1 @@
-# png_mimic
-PNG in binary.
+# **PNG Mimic**
