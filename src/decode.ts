@@ -3,6 +3,16 @@ import {crc32} from "./crc.ts";
 import {type ChunkType} from "./chunk.ts";
 import {PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_FILTER, PNG_MAGIC} from "./static.ts";
 
+/**
+* Extract binary from png image.
+* Input format is 24 bit color, gamma, no alpha, no filter.
+* @example
+* ```ts
+* const bin = await Deno.readFile("./file");
+* const encode = await pngEncode(bin);
+* const decode = await pngDecode(encode);
+* ```
+*/
 export async function pngDecode(data:Uint8Array):Promise<Uint8Array>{
     for(let i = 0; i < PNG_MAGIC.byteLength; i++){
         if(PNG_MAGIC[i] === data[i]){

@@ -22,6 +22,16 @@ function createChunk(type:ChunkType, ...bufs:Uint8Array[]){
     return byteConcat(n32(bufs.reduce((v, {byteLength}) => v + byteLength, 0)), name, ...bufs, n32(crc32(name, ...bufs)));
 }
 
+/**
+* Generate png image from binary.
+* Output format is 24 bit color, gamma, no alpha, no filter.
+* @example
+* ```ts
+* const bin = await Deno.readFile("./file");
+* const encode = await pngEncode(bin);
+* const decode = await pngDecode(encode);
+* ```
+*/
 export async function pngEncode(data:Uint8Array):Promise<Uint8Array>{
     const width = Math.ceil(Math.sqrt(data.byteLength / PNG_BYTE_PER_PIXEL));
     const size = Math.pow(width, 2) * PNG_BYTE_PER_PIXEL;
