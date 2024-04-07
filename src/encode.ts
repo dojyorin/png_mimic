@@ -48,5 +48,5 @@ export async function pngEncode(data:Uint8Array):Promise<Uint8Array>{
     const idat = createChunk("IDAT", await deflateEncode(byteConcat(...rows), "deflate"));
     const iend = createChunk("IEND");
 
-    return byteConcat(PNG_MAGIC, ihdr, gama, idat, iend);
+    return byteConcat(new Uint8Array(PNG_MAGIC), ihdr, gama, idat, iend);
 }
