@@ -14,7 +14,7 @@ import {PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_FILTER, PNG_MAG
 * ```
 */
 export async function pngDecode(data:Uint8Array):Promise<Uint8Array>{
-    for(let i = 0; i < PNG_MAGIC.byteLength; i++){
+    for(let i = 0; i < PNG_MAGIC.length; i++){
         if(PNG_MAGIC[i] === data[i]){
             continue;
         }
@@ -23,7 +23,7 @@ export async function pngDecode(data:Uint8Array):Promise<Uint8Array>{
     }
 
     const chunk:Partial<Record<ChunkType, Uint8Array>> = {};
-    for(let i = PNG_MAGIC.byteLength; i < data.length;){
+    for(let i = PNG_MAGIC.length; i < data.length;){
         const size = new DataView(data.slice(i, i += 4).buffer).getUint32(0);
         const name = data.slice(i, i += 4);
         const body = data.slice(i, i += size);
