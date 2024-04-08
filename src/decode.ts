@@ -50,11 +50,14 @@ export async function pngDecode(data:Uint8Array):Promise<Uint8Array>{
 
     const rows:Uint8Array[] = [];
     for(let i = 0; i < image.byteLength;){
+        const pixel = width * PNG_BYTE_PER_PIXEL;
+
         if(new DataView(image.slice(i, ++i).buffer).getUint8(0) !== PNG_FILTER){
-            throw new Error();
+            i += pixel;
+            continue;
         }
 
-        rows.push(image.slice(i, i += width * PNG_BYTE_PER_PIXEL));
+        rows.push(image.slice(i, i += pixel));
     }
 
     return byteConcat(...rows).slice(0, -new DataView(chunk.gAMA.buffer).getUint32(0));
