@@ -8,8 +8,7 @@
 Mimic any binary to PNG.
 
 # Details
-Embed any binary into IDAT chunk and generate image.
-Extract binary from IDAT chunk in image.
+A PNG tool that embed binary into IDAT chunk and generate image and extract binary from IDAT chunk in image.
 
 Due to image size, IDAT chunk size may be larger than binary size, in which case difference will be padded with zero.
 When extracting binary from image, need to know length of zero padding, so use gAMA (gamma value) chunk to store length.
