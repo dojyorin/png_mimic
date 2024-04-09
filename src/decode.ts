@@ -33,26 +33,30 @@ export async function pngDecode(data:Uint8Array):Promise<Uint8Array>{
             throw new Error();
         }
 
-        chunk[<ChunkType>u8Decode(name)] = body;
+        const key = <ChunkType>u8Decode(name);
+
+        if(key in chunk){
+            continue;
+        }
+
+        chunk[key] = body;
     }
 
     if(!chunk.IHDR || !chunk.gAMA || !chunk.IDAT || !chunk.IEND){
         throw new Error();
     }
 
-    const view = new DataView(chunk.IHDR.buffer);
-    const width = view.getUint32(0);
     const image = await deflateDecode(chunk.IDAT, "deflate");
+    const width = new DataView(chunk.IHDR.buffer).getUint32(0);
+    const pixel = width * PNG_BYTE_PER_PIXEL;
 
-    if(view.getUint8(8) !== PNG_COLOR_DEPTH || view.getUint8(9) !== PNG_COLOR_TYPE){
+    if(chunk.IHDR[8] !== PNG_COLOR_DEPTH || chunk.IHDR[9] !== PNG_COLOR_TYPE){
         throw new Error();
     }
 
     const rows:Uint8Array[] = [];
     for(let i = 0; i < image.byteLength;){
-        const pixel = width * PNG_BYTE_PER_PIXEL;
-
-        if(new DataView(image.slice(i, ++i).buffer).getUint8(0) !== PNG_FILTER){
+        if(image[i++] !== PNG_FILTER){
             i += pixel;
             continue;
         }
