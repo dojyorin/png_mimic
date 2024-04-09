@@ -35,10 +35,10 @@ function createChunk(type:ChunkType, ...bufs:Uint8Array[]){
 export async function pngEncode(data:Uint8Array):Promise<Uint8Array>{
     const width = Math.ceil(Math.sqrt(data.byteLength / PNG_BYTE_PER_PIXEL));
     const size = Math.pow(width, 2) * PNG_BYTE_PER_PIXEL;
+    const pixel = width * PNG_BYTE_PER_PIXEL;
 
     const rows:Uint8Array[] = [];
     for(let i = 0; i < size;){
-        const pixel = width * PNG_BYTE_PER_PIXEL;
         const row = data.slice(i, i += pixel);
         rows.push(byteConcat(new Uint8Array([PNG_FILTER]), row, new Uint8Array(pixel - row.byteLength)));
     }
