@@ -1,4 +1,4 @@
-import {byteConcat, deflateDecode, u8Decode} from "../deps.ts";
+import {byteConcat, deflateDecode, textDecode} from "../deps.ts";
 import {crc32} from "./crc.ts";
 import {type ChunkType} from "./chunk.ts";
 import {PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_FILTER, PNG_MAGIC} from "./static.ts";
@@ -33,7 +33,7 @@ export async function pngDecode(data:Uint8Array):Promise<Uint8Array>{
             throw new Error();
         }
 
-        const key = <ChunkType>u8Decode(name);
+        const key = <ChunkType>textDecode(name);
 
         if(key in chunk){
             continue;
