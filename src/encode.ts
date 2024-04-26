@@ -1,4 +1,4 @@
-import {byteConcat, deflateEncode, u8Encode} from "../deps.ts";
+import {byteConcat, deflateEncode, textEncode} from "../deps.ts";
 import {crc32} from "./crc.ts";
 import {type ChunkType} from "./chunk.ts";
 import {PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_FILTER, PNG_MAGIC} from "./static.ts";
@@ -17,7 +17,7 @@ function n32(n:number){
 }
 
 function createChunk(type:ChunkType, ...bufs:Uint8Array[]){
-    const name = u8Encode(type);
+    const name = textEncode(type);
 
     return byteConcat(n32(bufs.reduce((v, {byteLength}) => v + byteLength, 0)), name, ...bufs, n32(crc32(name, ...bufs)));
 }
