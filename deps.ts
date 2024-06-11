@@ -1,2 +1,2 @@
-// @deno-types="https://deno.land/x/simple_utility@v2.2.0/mod.pure.ts"
-export {byteConcat, deflateEncode, deflateDecode, textEncode, textDecode} from "https://esm.sh/gh/dojyorin/deno_simple_utility@v2.2.0/mod.pure.ts?bundle&target=esnext";
+// @deno-types="https://deno.land/x/simple_utility@v2.2.1/mod.pure.ts"
+export {byteConcat, deflateEncode, deflateDecode, textEncode, textDecode} from "https://esm.sh/gh/dojyorin/deno_simple_utility@v2.2.1/mod.pure.ts?bundle&target=esnext";
