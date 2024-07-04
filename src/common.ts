@@ -1,4 +1,4 @@
-const table = <const>[
+const CRC32_TABLE = <const> [
     0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988, 0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91,
     0x1DB71064, 0x6AB020F2, 0xF3B97148, 0x84BE41DE, 0x1ADAD47D, 0x6DDDE4EB, 0xF4D4B551, 0x83D385C7, 0x136C9856, 0x646BA8C0, 0xFD62F97A, 0x8A65C9EC, 0x14015C4F, 0x63066CD9, 0xFA0F3D63, 0x8D080DF5,
     0x3B6E20C8, 0x4C69105E, 0xD56041E4, 0xA2677172, 0x3C03E4D1, 0x4B04D447, 0xD20D85FD, 0xA50AB56B, 0x35B5A8FA, 0x42B2986C, 0xDBBBC9D6, 0xACBCF940, 0x32D86CE3, 0x45DF5C75, 0xDCD60DCF, 0xABD13D59,
@@ -17,12 +17,20 @@ const table = <const>[
     0xBDBDF21C, 0xCABAC28A, 0x53B39330, 0x24B4A3A6, 0xBAD03605, 0xCDD70693, 0x54DE5729, 0x23D967BF, 0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94, 0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
 ];
 
-export function crc32(...bufs:Uint8Array[]){
+export type ChunkType = "IHDR" | "IDAT" | "IEND" | "gAMA";
+
+export const PNG_BYTE_PER_PIXEL = 3;
+export const PNG_COLOR_DEPTH = 8;
+export const PNG_COLOR_TYPE = 2;
+export const PNG_FILTER = 0;
+export const PNG_MAGIC = <const> [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
+export function crc32(...bufs:Uint8Array[]) {
     let hash = 0xFFFFFFFF;
 
-    for(const buf of bufs){
-        for(const v of buf){
-            hash = table[(hash ^ v) & 0xFF] ^ (hash >>> 8);
+    for(const buf of bufs) {
+        for(const v of buf) {
+            hash = CRC32_TABLE[(hash ^ v) & 0xFF] ^ (hash >>> 8);
         }
     }
 
