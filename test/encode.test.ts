@@ -6,7 +6,7 @@ const sample2 = await Deno.readFile(new URL(import.meta.resolve("./asset/sample.
 
 Deno.test({
     name: "Encode",
-    async fn(){
+    async fn() {
         const encode = await pngEncode(sample1);
 
         assertEquals(encode, sample2);
