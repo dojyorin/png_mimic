@@ -25,7 +25,7 @@ export const PNG_COLOR_TYPE = 2;
 export const PNG_FILTER = 0;
 export const PNG_MAGIC = <const> [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
-export function crc32(...bufs:Uint8Array[]) {
+export function crc32(...bufs:Uint8Array[]): number {
     let hash = 0xFFFFFFFF;
 
     for(const buf of bufs) {
@@ -35,4 +35,12 @@ export function crc32(...bufs:Uint8Array[]) {
     }
 
     return hash ^ 0xFFFFFFFF;
+}
+
+export async function compressEncode(data: Uint8Array): Promise<Uint8Array> {
+    return await new Response(new Response(data).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
+}
+
+export async function compressDecode(data: Uint8Array): Promise<Uint8Array> {
+    return await new Response(new Response(data).body?.pipeThrough(new DecompressionStream("deflate"))).bytes();
 }
