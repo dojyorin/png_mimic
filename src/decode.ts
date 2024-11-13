@@ -5,6 +5,11 @@ interface Chunk {
     body: Uint8Array;
 }
 
+interface Bin {
+    name: string;
+    body: string;
+}
+
 /**
 * Extract binary from png image.
 * Input format is 24 bit color, gamma, no alpha, no filter.
@@ -15,7 +20,7 @@ interface Chunk {
 * const decode = await pngDecode(encode);
 * ```
 */
-export async function pngDecode(data: Uint8Array): Promise<Uint8Array> {
+export async function pngDecode(data: Uint8Array): Promise<Bin> {
     const dec = new TextDecoder();
 
     for(let i = 0; i < PNG_MAGIC.length; i++) {
@@ -45,19 +50,22 @@ export async function pngDecode(data: Uint8Array): Promise<Uint8Array> {
     }
 
     const chunk_IHDR = chunks.find(({name}) => name === "IHDR")?.body;
+    const chunk_PLTE = chunks.find(({name}) => name === "PLTE")?.body;
+    const chunk_IDAT = chunks.find(({name}) => name === "IDAT")?.body;
     const chunk_IEND = chunks.find(({name}) => name === "IEND")?.body;
-    const chunk_gAMA = chunks.find(({name}) => name === "gAMA")?.body;
-    const chunks_IDAT = chunks.filter(({name}) => name === "IDAT").map(({body}) => body);
 
-    if(!chunk_IHDR || !chunk_IEND || !chunk_gAMA || !chunks_IDAT.length) {
+    if(!chunk_IHDR || !chunk_PLTE || !chunk_IDAT || !chunk_IEND) {
         throw new ReferenceError("Missing chunks.");
     }
 
-    const image = await compressDecode(await new Blob(chunks_IDAT).bytes());
-    const width = new DataView(chunk_IHDR.buffer).getUint32(0);
+    const chunkView_IHDR = new DataView(chunk_IHDR.buffer);
+    const chunkView_PLTE = new DataView(chunk_PLTE.buffer);
+
+    const image = await compressDecode(chunk_IDAT);
+    const width = chunkView_IHDR.getUint32(0);
     const pixel = width * PNG_BYTE_PER_PIXEL;
 
-    if(chunk_IHDR[8] !== PNG_COLOR_DEPTH || chunk_IHDR[9] !== PNG_COLOR_TYPE) {
+    if(chunkView_IHDR.getUint8(8) !== PNG_COLOR_DEPTH || chunkView_IHDR.getUint8(9) !== PNG_COLOR_TYPE) {
         throw new ReferenceError("Invalid color format.");
     }
 
@@ -72,5 +80,8 @@ export async function pngDecode(data: Uint8Array): Promise<Uint8Array> {
         rows.push(image.slice(i, i += pixel));
     }
 
-    return (await new Blob(rows).bytes()).slice(0, -new DataView(chunk_gAMA.buffer).getUint32(0));
+    return {
+        name: dec.decode(chunk_PLTE.subarray(4)).replaceAll("\0", ""),
+        body: (await new Blob(rows).bytes()).slice(0, -chunkView_PLTE.getUint32(0))
+    };
 }
