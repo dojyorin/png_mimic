@@ -43,3 +43,7 @@ export async function compressEncode(data: Uint8Array): Promise<Uint8Array> {
 export async function compressDecode(data: Uint8Array): Promise<Uint8Array> {
     return await new Response(new Response(data).body?.pipeThrough(new DecompressionStream("deflate"))).bytes();
 }
+
+export async function bufCat(...bufs: Uint8Array[]): Promise<Uint8Array> {
+    return await new Blob(bufs).bytes();
+}
