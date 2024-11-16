@@ -1,4 +1,4 @@
-import {type NameBody, PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_FILTER, PNG_CHUNK_NAME_SIZE, PNG_MAGIC, deriveCRC32, compressDecode, byteConcat} from "./common.ts";
+import {type NameBody, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, CHUNK_NAME_SIZE, MAGIC_MARK, deriveCRC32, compressDecode, byteConcat} from "./common.ts";
 
 /**
 * Extract binary from png image.
@@ -13,8 +13,8 @@ import {type NameBody, PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_
 export async function pngDecode(data: Uint8Array): Promise<NameBody> {
     const dec = new TextDecoder();
 
-    for(let i = 0; i < PNG_MAGIC.length; i++) {
-        if(PNG_MAGIC[i] === data[i]) {
+    for(let i = 0; i < MAGIC_MARK.length; i++) {
+        if(MAGIC_MARK[i] === data[i]) {
             continue;
         }
 
@@ -23,9 +23,9 @@ export async function pngDecode(data: Uint8Array): Promise<NameBody> {
 
     const chunks: NameBody[] = [];
 
-    for(let i = PNG_MAGIC.length; i < data.length; undefined) {
+    for(let i = MAGIC_MARK.length; i < data.length; undefined) {
         const size = new DataView(data.slice(i, i += Uint32Array.BYTES_PER_ELEMENT).buffer).getUint32(0);
-        const name = data.slice(i, i += PNG_CHUNK_NAME_SIZE);
+        const name = data.slice(i, i += CHUNK_NAME_SIZE);
         const body = data.slice(i, i += size);
         const hash = new DataView(data.slice(i, i += Int32Array.BYTES_PER_ELEMENT).buffer).getInt32(0);
 
@@ -51,17 +51,17 @@ export async function pngDecode(data: Uint8Array): Promise<NameBody> {
     const chunkView_IHDR = new DataView(chunk_IHDR.buffer);
     const chunkView_PLTE = new DataView(chunk_PLTE.buffer);
 
-    if(chunkView_IHDR.getUint8(8) !== PNG_COLOR_DEPTH || chunkView_IHDR.getUint8(9) !== PNG_COLOR_TYPE) {
+    if(chunkView_IHDR.getUint8(8) !== COLOR_DEPTH || chunkView_IHDR.getUint8(9) !== COLOR_TYPE) {
         throw new ReferenceError("Invalid color format.");
     }
 
-    const nbyteWidth = chunkView_IHDR.getUint32(0) * PNG_BYTE_PER_PIXEL;
+    const nbyteWidth = chunkView_IHDR.getUint32(0) * BYTE_PER_PIXEL;
     const image = await compressDecode(chunk_IDAT);
 
     const rows: Uint8Array[] = [];
 
     for(let i = 0; i < image.byteLength; i++) {
-        if(image[i] !== PNG_FILTER) {
+        if(image[i] !== FILTER_TYPE) {
             i += nbyteWidth;
             continue;
         }
