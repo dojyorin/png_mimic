@@ -9,6 +9,6 @@ Deno.test({
     async fn() {
         const decode = await pngDecode(sample2);
 
-        assertEquals(decode, sample1);
+        assertEquals(decode.body, sample1);
     }
 });
