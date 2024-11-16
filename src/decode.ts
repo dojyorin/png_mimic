@@ -55,18 +55,18 @@ export async function pngDecode(data: Uint8Array): Promise<NameBody> {
         throw new ReferenceError("Invalid color format.");
     }
 
-    const nbyteWidth = chunkView_IHDR.getUint32(0) * BYTE_PER_PIXEL;
+    const nbytePerLine = chunkView_IHDR.getUint32(0) * BYTE_PER_PIXEL;
     const image = await compressDecode(chunk_IDAT);
 
     const rows: Uint8Array[] = [];
 
     for(let i = 0; i < image.byteLength; i++) {
         if(image[i] !== FILTER_TYPE) {
-            i += nbyteWidth;
+            i += nbytePerLine;
             continue;
         }
 
-        rows.push(image.slice(i, i += nbyteWidth));
+        rows.push(image.slice(i, i += nbytePerLine));
     }
 
     return {

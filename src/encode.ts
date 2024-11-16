@@ -29,21 +29,23 @@ function generateChunk(name: string, ...bufs: Uint8Array[]) {
 * ```
 */
 export async function pngEncode(data: Uint8Array): Promise<Uint8Array> {
-    const width = Math.ceil(Math.sqrt(data.byteLength / BYTE_PER_PIXEL));
-    const size = width ** 2 * BYTE_PER_PIXEL;
-    const pixel = width * BYTE_PER_PIXEL;
+    const imageWidth = Math.ceil(Math.sqrt(data.byteLength / BYTE_PER_PIXEL));
+    const frameSize = imageWidth ** 2 * BYTE_PER_PIXEL;
+    const nbytePerLine = imageWidth * BYTE_PER_PIXEL;
 
     const rows: Uint8Array[] = [];
 
-    for(let i = 0; i < size; undefined) {
-        const row = data.slice(i, i += pixel);
-        rows.push(byteConcat(new Uint8Array([FILTER_TYPE]), row, new Uint8Array(pixel - row.byteLength)));
+    const filterType = new Uint8Array([FILTER_TYPE]);
+
+    for(let i = 0; i < frameSize; undefined) {
+        const row = data.slice(i, i += nbytePerLine);
+        rows.push(byteConcat(filterType, row, new Uint8Array(nbytePerLine - row.byteLength)));
     }
 
-    const ihdr = generateChunk("IHDR", n32(width), n32(width), new Uint8Array([COLOR_DEPTH, COLOR_TYPE, 0x00, 0x00, 0x00]));
-    const gama = generateChunk("gAMA", n32(size - data.byteLength));
-    const idat = generateChunk("IDAT", await compressEncode(byteConcat(...rows)));
-    const iend = generateChunk("IEND");
+    const chunk_IHDR = generateChunk("IHDR", n32(imageWidth), n32(imageWidth), new Uint8Array([COLOR_DEPTH, COLOR_TYPE, 0x00, 0x00, 0x00]));
+    const chunk_PLTE = generateChunk("PLTE", n32(frameSize - data.byteLength));
+    const chunk_IDAT = generateChunk("IDAT", await compressEncode(byteConcat(...rows)));
+    const chunk_IEND = generateChunk("IEND");
 
-    return byteConcat(new Uint8Array(MAGIC_MARK), ihdr, gama, idat, iend);
+    return byteConcat(new Uint8Array(MAGIC_MARK), chunk_IHDR, chunk_PLTE, chunk_IDAT, chunk_IEND);
 }
