@@ -1,3 +1,8 @@
+// esnext-polyfill
+Response.prototype.bytes ??= async function() {
+    return new Uint8Array(await this.arrayBuffer());
+}
+
 export const PNG_BYTE_PER_PIXEL = 3;
 export const PNG_COLOR_DEPTH = 8;
 export const PNG_COLOR_TYPE = 2;
