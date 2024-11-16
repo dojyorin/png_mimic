@@ -1,13 +1,13 @@
-import {PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_FILTER, PNG_CHUNK_NAME_SIZE, PNG_MAGIC, deriveCRC32, compressDecode} from "./common.ts";
+import {PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_FILTER, PNG_CHUNK_NAME_SIZE, PNG_MAGIC, deriveCRC32, compressDecode, byteConcat} from "./common.ts";
 
 interface Chunk {
     name: string;
     body: Uint8Array;
 }
 
-interface Bin {
+interface RawFile {
     name: string;
-    body: string;
+    body: Uint8Array;
 }
 
 /**
@@ -20,7 +20,7 @@ interface Bin {
 * const decode = await pngDecode(encode);
 * ```
 */
-export async function pngDecode(data: Uint8Array): Promise<Bin> {
+export async function pngDecode(data: Uint8Array): Promise<RawFile> {
     const dec = new TextDecoder();
 
     for(let i = 0; i < PNG_MAGIC.length; i++) {
@@ -61,27 +61,26 @@ export async function pngDecode(data: Uint8Array): Promise<Bin> {
     const chunkView_IHDR = new DataView(chunk_IHDR.buffer);
     const chunkView_PLTE = new DataView(chunk_PLTE.buffer);
 
-    const image = await compressDecode(chunk_IDAT);
-    const width = chunkView_IHDR.getUint32(0);
-    const pixel = width * PNG_BYTE_PER_PIXEL;
-
     if(chunkView_IHDR.getUint8(8) !== PNG_COLOR_DEPTH || chunkView_IHDR.getUint8(9) !== PNG_COLOR_TYPE) {
         throw new ReferenceError("Invalid color format.");
     }
 
+    const nbyteWidth = chunkView_IHDR.getUint32(0) * PNG_BYTE_PER_PIXEL;
+    const image = await compressDecode(chunk_IDAT);
+
     const rows: Uint8Array[] = [];
 
-    for(let i = 0; i < image.byteLength; undefined) {
-        if(image[i++] !== PNG_FILTER) {
-            i += pixel;
+    for(let i = 0; i < image.byteLength; i++) {
+        if(image[i] !== PNG_FILTER) {
+            i += nbyteWidth;
             continue;
         }
 
-        rows.push(image.slice(i, i += pixel));
+        rows.push(image.slice(i, i += nbyteWidth));
     }
 
     return {
-        name: dec.decode(chunk_PLTE.subarray(4)).replaceAll("\0", ""),
-        body: (await new Blob(rows).bytes()).slice(0, -chunkView_PLTE.getUint32(0))
+        name: dec.decode(chunk_PLTE.subarray(Uint32Array.BYTES_PER_ELEMENT)).replaceAll("\0", ""),
+        body: byteConcat(...rows).slice(0, -chunkView_PLTE.getUint32(0))
     };
 }
