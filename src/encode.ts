@@ -30,7 +30,7 @@ function generateChunk(name: string, ...bufs: Uint8Array[]) {
 */
 export async function pngEncode(data: Uint8Array): Promise<Uint8Array> {
     const width = Math.ceil(Math.sqrt(data.byteLength / BYTE_PER_PIXEL));
-    const size = Math.pow(width, 2) * BYTE_PER_PIXEL;
+    const size = width ** 2 * BYTE_PER_PIXEL;
     const pixel = width * BYTE_PER_PIXEL;
 
     const rows: Uint8Array[] = [];
