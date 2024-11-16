@@ -1,5 +1,4 @@
-import {byteConcat, deflateEncode, textEncode} from "../deps.ts";
-import {type ChunkType, PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_FILTER, PNG_MAGIC, crc32} from "./common.ts";
+import {PNG_BYTE_PER_PIXEL, PNG_COLOR_DEPTH, PNG_COLOR_TYPE, PNG_FILTER, PNG_MAGIC, deriveCRC32, compressEncode, byteConcat} from "./common.ts";
 
 function n32(n: number) {
     const view = new DataView(new ArrayBuffer(4));
@@ -13,10 +12,10 @@ function n32(n: number) {
     return new Uint8Array(view.buffer);
 }
 
-function createChunk(type: ChunkType, ...bufs: Uint8Array[]) {
-    const name = textEncode(type);
+function generateChunk(name: string, ...bufs: Uint8Array[]) {
+    const _name = new TextEncoder().encode(name);
 
-    return byteConcat(n32(bufs.reduce((v, {byteLength}) => v + byteLength, 0)), name, ...bufs, n32(crc32(name, ...bufs)));
+    return byteConcat(n32(bufs.reduce((v, {byteLength}) => v + byteLength, 0)), _name, ...bufs, n32(deriveCRC32(_name, ...bufs)));
 }
 
 /**
@@ -35,15 +34,16 @@ export async function pngEncode(data: Uint8Array): Promise<Uint8Array> {
     const pixel = width * PNG_BYTE_PER_PIXEL;
 
     const rows: Uint8Array[] = [];
-    for(let i = 0; i < size;) {
+
+    for(let i = 0; i < size; undefined) {
         const row = data.slice(i, i += pixel);
         rows.push(byteConcat(new Uint8Array([PNG_FILTER]), row, new Uint8Array(pixel - row.byteLength)));
     }
 
-    const ihdr = createChunk("IHDR", n32(width), n32(width), new Uint8Array([PNG_COLOR_DEPTH, PNG_COLOR_TYPE, 0x00, 0x00, 0x00]));
-    const gama = createChunk("gAMA", n32(size - data.byteLength));
-    const idat = createChunk("IDAT", await deflateEncode(byteConcat(...rows), "deflate"));
-    const iend = createChunk("IEND");
+    const ihdr = generateChunk("IHDR", n32(width), n32(width), new Uint8Array([PNG_COLOR_DEPTH, PNG_COLOR_TYPE, 0x00, 0x00, 0x00]));
+    const gama = generateChunk("gAMA", n32(size - data.byteLength));
+    const idat = generateChunk("IDAT", await compressEncode(byteConcat(...rows)));
+    const iend = generateChunk("IEND");
 
     return byteConcat(new Uint8Array(PNG_MAGIC), ihdr, gama, idat, iend);
 }
