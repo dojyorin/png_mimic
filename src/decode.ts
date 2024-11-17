@@ -1,4 +1,4 @@
-import {type NameBody, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, CHUNK_NAME_SIZE, MAGIC_MARK, deriveCRC32, compressDecode, byteConcat} from "./common.ts";
+import {type Binary, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, CHUNK_NAME_SIZE, MAGIC_MARK, deriveCRC32, compressDecode, byteConcat} from "./common.ts";
 
 /**
 * Extract binary from png image.
@@ -10,7 +10,7 @@ import {type NameBody, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, CHU
 * const decode = await pngDecode(encode);
 * ```
 */
-export async function pngDecode(data: Uint8Array): Promise<NameBody> {
+export async function pngDecode(data: Uint8Array): Promise<Binary> {
     const dec = new TextDecoder();
 
     for(let i = 0; i < MAGIC_MARK.length; i++) {
@@ -21,7 +21,7 @@ export async function pngDecode(data: Uint8Array): Promise<NameBody> {
         throw new ReferenceError("Invalid magic bytes.");
     }
 
-    const chunks: NameBody[] = [];
+    const chunks: Binary[] = [];
 
     for(let i = MAGIC_MARK.length; i < data.length; undefined) {
         const size = new DataView(data.slice(i, i += Uint32Array.BYTES_PER_ELEMENT).buffer).getUint32(0);

@@ -3,7 +3,7 @@ Response.prototype.bytes ??= async function() {
     return new Uint8Array(await this.arrayBuffer());
 }
 
-export interface NameBody {
+export interface Binary {
     name: string;
     body: Uint8Array;
 }
