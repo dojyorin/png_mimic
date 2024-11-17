@@ -57,9 +57,9 @@ export async function compressDecode(data: Uint8Array): Promise<Uint8Array> {
 export function byteConcat(...sources: Uint8Array[]): Uint8Array {
     const memory = new Uint8Array(sources.reduce((n, {byteLength}) => n + byteLength, 0));
 
-    for(let i = 0, j = 0; j < sources.length; j++) {
-        memory.set(sources[j], i);
-        i += sources[j].byteLength;
+    for(let i = 0, j = 0; i < sources.length; i++) {
+        memory.set(sources[i], j);
+        j += sources[i].byteLength;
     }
 
     return memory;
