@@ -1,4 +1,5 @@
-import {type Binary, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, CHUNK_NAME_SIZE, MAGIC_MARK, deriveCRC32, compressDecode, byteConcat} from "./common.ts";
+import {type Binary, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, compressDecode, byteConcat} from "./common.ts";
+import {parsePNG} from "./chunk.ts";
 
 /**
 * Extract binary from png image.
@@ -10,34 +11,10 @@ import {type Binary, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, CHUNK
 * const decode = await pngDecode(encode);
 * ```
 */
-export async function pngDecode(data: Uint8Array): Promise<Binary> {
+export async function pngDecode(png: Uint8Array): Promise<Binary> {
     const dec = new TextDecoder();
 
-    for(let i = 0; i < MAGIC_MARK.length; i++) {
-        if(MAGIC_MARK[i] === data[i]) {
-            continue;
-        }
-
-        throw new ReferenceError("Invalid magic bytes.");
-    }
-
-    const chunks: Binary[] = [];
-
-    for(let i = MAGIC_MARK.length; i < data.length; undefined) {
-        const size = new DataView(data.slice(i, i += Uint32Array.BYTES_PER_ELEMENT).buffer).getUint32(0);
-        const name = data.slice(i, i += CHUNK_NAME_SIZE);
-        const body = data.slice(i, i += size);
-        const hash = new DataView(data.slice(i, i += Int32Array.BYTES_PER_ELEMENT).buffer).getInt32(0);
-
-        if(deriveCRC32(name, body) !== hash) {
-            throw new ReferenceError("Checksum mismatch.");
-        }
-
-        chunks.push({
-            name: dec.decode(name),
-            body: body
-        });
-    }
+    const chunks = Array.from(parsePNG(png));
 
     const chunk_IHDR = chunks.find(({name}) => name === "IHDR")?.body;
     const chunk_PLTE = chunks.find(({name}) => name === "PLTE")?.body;

@@ -13,12 +13,6 @@ interface ChunkIHDR {
     colorType: number;
 }
 
-function createChunk(name: string, data: Uint8Array) {
-    const _name = new TextEncoder().encode(name);
-
-    return byteConcat(new Uint8Array(new Uint32Array([data.byteLength]).buffer), _name, data, new Uint8Array(new Int32Array([deriveCRC32(_name, data)]).buffer));
-}
-
 export function* parsePNG(png: Uint8Array): Generator<Chunk> {
     const dec = new TextDecoder();
 
@@ -57,6 +51,12 @@ export function parseIHDR(data: Uint8Array): ChunkIHDR {
         colorDepth: view.getUint8(8),
         colorType: view.getUint8(9)
     };
+}
+
+function createChunk(name: string, data: Uint8Array) {
+    const _name = new TextEncoder().encode(name);
+
+    return byteConcat(new Uint8Array(new Uint32Array([data.byteLength]).buffer), _name, data, new Uint8Array(new Int32Array([deriveCRC32(_name, data)]).buffer));
 }
 
 export function createIHDR(chunk: ChunkIHDR) {
