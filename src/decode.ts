@@ -1,19 +1,12 @@
-import {type Binary, MAGIC_MARK, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, deriveCRC32, compressDecode, byteConcat} from "./common.ts";
+import {type Binary, MAGIC_MARK, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, deriveCRC32, byteConcat, compressDecode} from "./common.ts";
 
-export interface Chunk {
+interface Chunk {
     name: string;
     body: Uint8Array;
     crc32: number;
 }
 
-export interface ChunkIHDR {
-    width: number;
-    height: number;
-    colorDepth: number;
-    colorType: number;
-}
-
-export function* parsePNG(png: Uint8Array): Generator<Chunk> {
+function* parsePNG(png: Uint8Array): Generator<Chunk> {
     const dec = new TextDecoder();
 
     for(let i = 0; i < MAGIC_MARK.length; i++) {
@@ -78,15 +71,17 @@ export async function pngDecode(png: Uint8Array): Promise<Binary> {
     const nbytePerLine = chunkViewIHDR.getUint32(0) * BYTE_PER_PIXEL;
     const image = await compressDecode(chunkIDAT);
 
-    const rows: Uint8Array[] = [];
+    const rows = Array.from({
+        *[Symbol.iterator]() {
+            for(let i = 0; i < image.byteLength; i++) {
+                if(image[i] !== FILTER_TYPE) {
+                    throw new ReferenceError("Invalid color filter.");
+                }
 
-    for(let i = 0; i < image.byteLength; i++) {
-        if(image[i] !== FILTER_TYPE) {
-            throw new ReferenceError("Invalid color filter.");
+                yield image.slice(i, i += nbytePerLine);
+            }
         }
-
-        rows.push(image.slice(i, i += nbytePerLine));
-    }
+    });
 
     let pos = 0;
     const rawimage = byteConcat(...rows);

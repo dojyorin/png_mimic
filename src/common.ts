@@ -45,14 +45,6 @@ export function deriveCRC32(...buffers: Uint8Array[]): number {
     return hash ^ 0xFFFFFFFF;
 }
 
-export async function compressEncode(data: Uint8Array): Promise<Uint8Array> {
-    return await new Response(new Response(data).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
-}
-
-export async function compressDecode(data: Uint8Array): Promise<Uint8Array> {
-    return await new Response(new Response(data).body?.pipeThrough(new DecompressionStream("deflate"))).bytes();
-}
-
 export function byteConcat(...sources: Uint8Array[]): Uint8Array {
     const memory = new Uint8Array(sources.reduce((n, {byteLength}) => n + byteLength, 0));
 
@@ -62,4 +54,12 @@ export function byteConcat(...sources: Uint8Array[]): Uint8Array {
     }
 
     return memory;
+}
+
+export async function compressEncode(data: Uint8Array): Promise<Uint8Array> {
+    return await new Response(new Response(data).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
+}
+
+export async function compressDecode(data: Uint8Array): Promise<Uint8Array> {
+    return await new Response(new Response(data).body?.pipeThrough(new DecompressionStream("deflate"))).bytes();
 }
