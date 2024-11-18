@@ -40,7 +40,7 @@ export async function pngEncode({name, body}: Binary): Promise<Uint8Array> {
     viewx.setUint32(0, name_.byteLength);
     viewx.setUint32(Uint32Array.BYTES_PER_ELEMENT, body.byteLength);
 
-    const bodyx = byteConcat(new Uint8Array(viewx.buffer), body);
+    const bodyx = byteConcat(new Uint8Array(viewx.buffer), name_, body);
 
     const rows = Array.from({
         *[Symbol.iterator]() {
