@@ -19,7 +19,6 @@ It uses PLTE chunk but saves in 24 bits RGB, so palette contents are not used.
 Output image is square, with width and height approximately equal to square root of binary size divided 3.
 
 ## Specification
-
 |Property|Value|
 |:--|:--|
 |Color|24 bits RGB|
