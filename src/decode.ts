@@ -1,5 +1,52 @@
-import {type Binary, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, compressDecode, byteConcat} from "./common.ts";
-import {parsePNG} from "./chunk.ts";
+import {type Binary, MAGIC_MARK, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, deriveCRC32, compressDecode, byteConcat} from "./common.ts";
+
+export interface Chunk {
+    name: string;
+    body: Uint8Array;
+    crc32: number;
+}
+
+export interface ChunkIHDR {
+    width: number;
+    height: number;
+    colorDepth: number;
+    colorType: number;
+}
+
+export function* parsePNG(png: Uint8Array): Generator<Chunk> {
+    const dec = new TextDecoder();
+
+    for(let i = 0; i < MAGIC_MARK.length; i++) {
+        if(png[i] !== MAGIC_MARK[i]) {
+            throw new ReferenceError("Invalid magic bytes.");
+        }
+
+        continue;
+    }
+
+    for(let i = MAGIC_MARK.length; i < png.byteLength; undefined) {
+        const view = new DataView(png.buffer);
+
+        const size = view.getUint32(i);
+        i += Uint32Array.BYTES_PER_ELEMENT;
+
+        const name = png.slice(i, i += 4);
+        const body = png.slice(i, i += size);
+
+        const crc32 = view.getInt32(i);
+        i += Int32Array.BYTES_PER_ELEMENT;
+
+        if(deriveCRC32(name, body) !== crc32) {
+            throw new ReferenceError("Checksum mismatch.");
+        }
+
+        yield {
+            name: dec.decode(name),
+            body: body,
+            crc32: crc32
+        };
+    }
+}
 
 /**
 * Extract binary from png image.
@@ -12,28 +59,24 @@ import {parsePNG} from "./chunk.ts";
 * ```
 */
 export async function pngDecode(png: Uint8Array): Promise<Binary> {
-    const dec = new TextDecoder();
-
     const chunks = Array.from(parsePNG(png));
 
-    const chunk_IHDR = chunks.find(({name}) => name === "IHDR")?.body;
-    const chunk_PLTE = chunks.find(({name}) => name === "PLTE")?.body;
-    const chunk_IDAT = chunks.find(({name}) => name === "IDAT")?.body;
-    const chunk_IEND = chunks.find(({name}) => name === "IEND")?.body;
+    const chunkIHDR = chunks.find(({name}) => name === "IHDR")?.body;
+    const chunkIDAT = chunks.find(({name}) => name === "IDAT")?.body;
+    const chunkIEND = chunks.find(({name}) => name === "IEND")?.body;
 
-    if(!chunk_IHDR || !chunk_PLTE || !chunk_IDAT || !chunk_IEND) {
+    if(!chunkIHDR || !chunkIDAT || !chunkIEND) {
         throw new ReferenceError("Missing chunks.");
     }
 
-    const chunkView_IHDR = new DataView(chunk_IHDR.buffer);
-    const chunkView_PLTE = new DataView(chunk_PLTE.buffer);
+    const chunkViewIHDR = new DataView(chunkIHDR.buffer);
 
-    if(chunkView_IHDR.getUint8(8) !== COLOR_DEPTH || chunkView_IHDR.getUint8(9) !== COLOR_TYPE) {
+    if(chunkViewIHDR.getUint8(8) !== COLOR_DEPTH || chunkViewIHDR.getUint8(9) !== COLOR_TYPE) {
         throw new ReferenceError("Invalid color format.");
     }
 
-    const nbytePerLine = chunkView_IHDR.getUint32(0) * BYTE_PER_PIXEL;
-    const image = await compressDecode(chunk_IDAT);
+    const nbytePerLine = chunkViewIHDR.getUint32(0) * BYTE_PER_PIXEL;
+    const image = await compressDecode(chunkIDAT);
 
     const rows: Uint8Array[] = [];
 
@@ -46,8 +89,17 @@ export async function pngDecode(png: Uint8Array): Promise<Binary> {
         rows.push(image.slice(i, i += nbytePerLine));
     }
 
+    let pos = 0;
+    const rawimage = byteConcat(...rows);
+    const nsize = new DataView(rawimage.buffer).getUint32(pos);
+    pos += Uint32Array.BYTES_PER_ELEMENT;
+    const bsize = new DataView(rawimage.buffer).getUint32(pos);
+    pos += Uint32Array.BYTES_PER_ELEMENT;
+    const name = new TextDecoder().decode(rawimage.subarray(pos, pos += nsize));
+    const body = rawimage.slice(pos, pos += bsize);
+
     return {
-        name: dec.decode(chunk_PLTE.subarray(Uint32Array.BYTES_PER_ELEMENT)).replaceAll("\0", ""),
-        body: byteConcat(...rows).slice(0, -chunkView_PLTE.getUint32(0))
+        name: name,
+        body: body
     };
 }
