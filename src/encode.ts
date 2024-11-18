@@ -1,4 +1,6 @@
-import {type Binary, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, MAGIC_MARK, CHUNK_NAME_SIZE, deriveCRC32, compressEncode, byteConcat} from "./common.ts";
+import {type Binary, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, MAGIC_MARK, deriveCRC32, compressEncode, byteConcat} from "./common.ts";
+
+const enc = new TextEncoder();
 
 function n32(n: number) {
     const view = new DataView(new ArrayBuffer(4));
@@ -12,8 +14,8 @@ function n32(n: number) {
     return new Uint8Array(view.buffer);
 }
 
-function generateChunk(name: string, ...bufs: Uint8Array[]) {
-    const _name = new TextEncoder().encode(name);
+function createChunk(name: string, ...bufs: Uint8Array[]) {
+    const _name = enc.encode(name);
 
     return byteConcat(n32(bufs.reduce((v, {byteLength}) => v + byteLength, 0)), _name, ...bufs, n32(deriveCRC32(_name, ...bufs)));
 }
@@ -29,22 +31,29 @@ function generateChunk(name: string, ...bufs: Uint8Array[]) {
 * ```
 */
 export async function pngEncode({name, body}: Binary): Promise<Uint8Array> {
-    const imageWidth = Math.ceil(Math.sqrt((body.byteLength + CHUNK_NAME_SIZE) / BYTE_PER_PIXEL));
+    const name_ = enc.encode(name);
+    const imageWidth = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT * 2 + name_.byteLength + body.byteLength) / BYTE_PER_PIXEL));
     const frameSize = imageWidth ** 2 * BYTE_PER_PIXEL;
     const nbytePerLine = imageWidth * BYTE_PER_PIXEL;
 
-    const rows: Uint8Array[] = [];
+    const viewx = new DataView(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT * 2));
+    viewx.setUint32(0, name_.byteLength);
+    viewx.setUint32(Uint32Array.BYTES_PER_ELEMENT, body.byteLength);
 
-    const filterType = new Uint8Array([FILTER_TYPE]);
+    const bodyx = byteConcat(new Uint8Array(viewx.buffer), body);
 
-    for(let i = 0; i < frameSize; undefined) {
-        const row = body.slice(i, i += nbytePerLine);
-        rows.push(byteConcat(filterType, row, new Uint8Array(nbytePerLine - row.byteLength)));
-    }
+    const rows = Array.from({
+        *[Symbol.iterator]() {
+            for(let i = 0; i < frameSize; undefined) {
+                const row = bodyx.slice(i, i += nbytePerLine);
+                yield byteConcat(new Uint8Array([FILTER_TYPE]), row, new Uint8Array(nbytePerLine - row.byteLength));
+            }
+        }
+    });
 
-    const chunk_IHDR = generateChunk("IHDR", n32(imageWidth), n32(imageWidth), new Uint8Array([COLOR_DEPTH, COLOR_TYPE, 0x00, 0x00, 0x00]));
-    const chunk_IDAT = generateChunk("IDAT", await compressEncode(byteConcat(...rows)));
-    const chunk_IEND = generateChunk("IEND");
+    const chunkIHDR = createChunk("IHDR", n32(imageWidth), n32(imageWidth), new Uint8Array([COLOR_DEPTH, COLOR_TYPE, 0x00, 0x00, 0x00]));
+    const chunkIDAT = createChunk("IDAT", await compressEncode(byteConcat(...rows)));
+    const chunkIEND = createChunk("IEND");
 
-    return byteConcat(new Uint8Array(MAGIC_MARK), chunk_IHDR, chunk_IDAT, chunk_IEND);
+    return byteConcat(new Uint8Array(MAGIC_MARK), chunkIHDR, chunkIDAT, chunkIEND);
 }

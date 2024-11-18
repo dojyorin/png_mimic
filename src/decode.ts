@@ -6,9 +6,9 @@ interface Chunk {
     crc32: number;
 }
 
-function* parsePNG(png: Uint8Array): Generator<Chunk> {
-    const dec = new TextDecoder();
+const dec = new TextDecoder();
 
+function* parsePNG(png: Uint8Array): Generator<Chunk> {
     for(let i = 0; i < MAGIC_MARK.length; i++) {
         if(png[i] !== MAGIC_MARK[i]) {
             throw new ReferenceError("Invalid magic bytes.");
@@ -92,7 +92,7 @@ export async function pngDecode(png: Uint8Array): Promise<Binary> {
     const bsize = rawimageview.getUint32(pos);
     pos += Uint32Array.BYTES_PER_ELEMENT;
 
-    const name = new TextDecoder().decode(rawimage.subarray(pos, pos += nsize));
+    const name = dec.decode(rawimage.subarray(pos, pos += nsize));
     const body = rawimage.slice(pos, pos += bsize);
 
     return {
