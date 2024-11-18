@@ -2,22 +2,15 @@ import {type Binary, BYTE_PER_PIXEL, COLOR_DEPTH, COLOR_TYPE, FILTER_TYPE, MAGIC
 
 const enc = new TextEncoder();
 
-function n32(n: number) {
-    const view = new DataView(new ArrayBuffer(4));
-
-    if(n < 0) {
-        view.setInt32(0, n);
-    } else {
-        view.setUint32(0, n);
-    }
-
-    return new Uint8Array(view.buffer);
-}
-
-function createChunk(name: string, ...bufs: Uint8Array[]) {
+function createChunk(name: string, body: Uint8Array) {
     const _name = enc.encode(name);
+    const xa = new DataView(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT));
+    const xb = new DataView(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT));
 
-    return byteConcat(n32(bufs.reduce((v, {byteLength}) => v + byteLength, 0)), _name, ...bufs, n32(deriveCRC32(_name, ...bufs)));
+    xa.setUint32(0, body.byteLength);
+    xb.setInt32(0, deriveCRC32(_name, body));
+
+    return byteConcat(new Uint8Array(xa.buffer), _name, body, new Uint8Array(xb.buffer));
 }
 
 /**
@@ -51,9 +44,20 @@ export async function pngEncode({name, body}: Binary): Promise<Uint8Array> {
         }
     });
 
-    const chunkIHDR = createChunk("IHDR", n32(imageWidth), n32(imageWidth), new Uint8Array([COLOR_DEPTH, COLOR_TYPE, 0x00, 0x00, 0x00]));
+    let pos = 0;
+    const xbvv = new DataView(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT * 2 + Uint8Array.BYTES_PER_ELEMENT * 2 + 3));
+    xbvv.setUint32(pos, imageWidth);
+    pos += Uint32Array.BYTES_PER_ELEMENT;
+    xbvv.setUint32(pos, imageWidth);
+    pos += Uint32Array.BYTES_PER_ELEMENT;
+    xbvv.setUint8(pos, COLOR_DEPTH);
+    pos += Uint8Array.BYTES_PER_ELEMENT;
+    xbvv.setUint8(pos, COLOR_TYPE);
+    pos += Uint8Array.BYTES_PER_ELEMENT;
+
+    const chunkIHDR = createChunk("IHDR", new Uint8Array(xbvv.buffer));
     const chunkIDAT = createChunk("IDAT", await compressEncode(byteConcat(...rows)));
-    const chunkIEND = createChunk("IEND");
+    const chunkIEND = createChunk("IEND", new Uint8Array(0));
 
     return byteConcat(new Uint8Array(MAGIC_MARK), chunkIHDR, chunkIDAT, chunkIEND);
 }
