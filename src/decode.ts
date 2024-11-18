@@ -82,8 +82,7 @@ export async function pngDecode(png: Uint8Array): Promise<Binary> {
 
     for(let i = 0; i < image.byteLength; i++) {
         if(image[i] !== FILTER_TYPE) {
-            i += nbytePerLine;
-            continue;
+            throw new ReferenceError("Invalid color filter.");
         }
 
         rows.push(image.slice(i, i += nbytePerLine));
