@@ -85,10 +85,13 @@ export async function pngDecode(png: Uint8Array): Promise<Binary> {
 
     let pos = 0;
     const rawimage = byteConcat(...rows);
-    const nsize = new DataView(rawimage.buffer).getUint32(pos);
+    const rawimageview = new DataView(rawimage.buffer);
+    const nsize = rawimageview.getUint32(pos);
     pos += Uint32Array.BYTES_PER_ELEMENT;
-    const bsize = new DataView(rawimage.buffer).getUint32(pos);
+
+    const bsize = rawimageview.getUint32(pos);
     pos += Uint32Array.BYTES_PER_ELEMENT;
+
     const name = new TextDecoder().decode(rawimage.subarray(pos, pos += nsize));
     const body = rawimage.slice(pos, pos += bsize);
 
