@@ -9,15 +9,15 @@ interface Chunk {
 const dec = new TextDecoder();
 
 function* parsePNG(png: Uint8Array): Generator<Chunk> {
-    for(let i = 0; i < MAGIC_MARK.length; i++) {
-        if(png[i] !== MAGIC_MARK[i]) {
+    for (let i = 0; i < MAGIC_MARK.length; i++) {
+        if (png[i] !== MAGIC_MARK[i]) {
             throw new ReferenceError("Invalid magic bytes.");
         }
 
         continue;
     }
 
-    for(let i = MAGIC_MARK.length; i < png.byteLength; undefined) {
+    for (let i = MAGIC_MARK.length; i < png.byteLength; undefined) {
         const view = new DataView(png.buffer);
 
         const size = view.getUint32(i);
@@ -29,7 +29,7 @@ function* parsePNG(png: Uint8Array): Generator<Chunk> {
         const crc32 = view.getInt32(i);
         i += Int32Array.BYTES_PER_ELEMENT;
 
-        if(deriveCRC32(name, body) !== crc32) {
+        if (deriveCRC32(name, body) !== crc32) {
             throw new ReferenceError("Checksum mismatch.");
         }
 
@@ -58,13 +58,13 @@ export async function pngDecode(png: Uint8Array): Promise<Binary> {
     const chunkIDAT = chunks.find(({name}) => name === "IDAT")?.body;
     const chunkIEND = chunks.find(({name}) => name === "IEND")?.body;
 
-    if(!chunkIHDR || !chunkIDAT || !chunkIEND) {
+    if (!chunkIHDR || !chunkIDAT || !chunkIEND) {
         throw new ReferenceError("Missing chunks.");
     }
 
     const chunkViewIHDR = new DataView(chunkIHDR.buffer);
 
-    if(chunkViewIHDR.getUint8(8) !== COLOR_DEPTH || chunkViewIHDR.getUint8(9) !== COLOR_TYPE) {
+    if (chunkViewIHDR.getUint8(8) !== COLOR_DEPTH || chunkViewIHDR.getUint8(9) !== COLOR_TYPE) {
         throw new ReferenceError("Invalid color format.");
     }
 
@@ -73,8 +73,8 @@ export async function pngDecode(png: Uint8Array): Promise<Binary> {
 
     const rows = Array.from({
         *[Symbol.iterator]() {
-            for(let i = 0; i < image.byteLength; i++) {
-                if(image[i] !== FILTER_TYPE) {
+            for (let i = 0; i < image.byteLength; i++) {
+                if (image[i] !== FILTER_TYPE) {
                     throw new ReferenceError("Invalid color filter.");
                 }
 

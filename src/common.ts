@@ -1,8 +1,3 @@
-// esnext-polyfill
-Response.prototype.bytes ??= async function() {
-    return new Uint8Array(await this.arrayBuffer());
-}
-
 export interface Binary {
     name: string;
     body: Uint8Array;
@@ -36,8 +31,8 @@ export function deriveCRC32(...buffers: Uint8Array[]): number {
 
     let hash = 0xFFFFFFFF;
 
-    for(const buffer of buffers) {
-        for(const n of buffer) {
+    for (const buffer of buffers) {
+        for (const n of buffer) {
             hash = TABLE[(hash ^ n) & 0xFF] ^ (hash >>> 8);
         }
     }
@@ -48,7 +43,7 @@ export function deriveCRC32(...buffers: Uint8Array[]): number {
 export function byteConcat(...sources: Uint8Array[]): Uint8Array {
     const memory = new Uint8Array(sources.reduce((n, {byteLength}) => n + byteLength, 0));
 
-    for(let i = 0, j = 0; i < sources.length; i++) {
+    for (let i = 0, j = 0; i < sources.length; i++) {
         memory.set(sources[i], j);
         j += sources[i].byteLength;
     }

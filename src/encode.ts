@@ -37,7 +37,7 @@ export async function pngEncode({name, body}: Binary): Promise<Uint8Array> {
 
     const rows = Array.from({
         *[Symbol.iterator]() {
-            for(let i = 0; i < frameSize; undefined) {
+            for (let i = 0; i < frameSize; undefined) {
                 const row = bodyx.slice(i, i += nbytePerLine);
                 yield byteConcat(new Uint8Array([FILTER_TYPE]), row, new Uint8Array(nbytePerLine - row.byteLength));
             }
