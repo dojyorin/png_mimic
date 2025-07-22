@@ -62,9 +62,19 @@ interface Chunk {
     crc32: number;
 }
 
-const dec = new TextDecoder();
+/**
+* Extract binary from png image.
+* Input format is 24 bit color, gamma, no alpha, no filter.
+* @example
+* ```ts
+* const bin = await Deno.readFile("./file");
+* const encode = await pngEncode(bin);
+* const decode = await pngDecode(encode);
+* ```
+*/
+export async function pngDecode(png: Uint8Array): Promise<{name: string; body: Uint8Array;}> {
+    const dec = new TextDecoder();
 
-function* parsePNG(png: Uint8Array): Generator<Chunk> {
     for (let i = 0; i < MAGIC_MARK.length; i++) {
         if (png[i] !== MAGIC_MARK[i]) {
             throw new ReferenceError("Invalid magic bytes.");
@@ -73,7 +83,9 @@ function* parsePNG(png: Uint8Array): Generator<Chunk> {
         continue;
     }
 
-    for (let i = MAGIC_MARK.length; i < png.byteLength; undefined) {
+    const chunks = [];
+
+    for (let i = MAGIC_MARK.length; i < png.byteLength;) {
         const view = new DataView(png.buffer);
 
         const size = view.getUint32(i);
@@ -89,26 +101,12 @@ function* parsePNG(png: Uint8Array): Generator<Chunk> {
             throw new ReferenceError("Checksum mismatch.");
         }
 
-        yield {
+        chunks.push({
             name: dec.decode(name),
             body: body,
             crc32: crc32
-        };
+        });
     }
-}
-
-/**
-* Extract binary from png image.
-* Input format is 24 bit color, gamma, no alpha, no filter.
-* @example
-* ```ts
-* const bin = await Deno.readFile("./file");
-* const encode = await pngEncode(bin);
-* const decode = await pngDecode(encode);
-* ```
-*/
-export async function pngDecode(png: Uint8Array): Promise<{name: string; body: Uint8Array;}> {
-    const chunks = Array.from(parsePNG(png));
 
     const chunkIHDR = chunks.find(({name}) => name === "IHDR")?.body;
     const chunkIDAT = chunks.find(({name}) => name === "IDAT")?.body;
