@@ -4,6 +4,27 @@ const COLOR_TYPE = 2;
 const FILTER_TYPE = 0;
 const MAGIC_MARK = <const> [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
+function byteConcat(...sources: Uint8Array[]) {
+    const memory = new Uint8Array(sources.reduce((n, {byteLength}) => n + byteLength, 0));
+
+    for (let i = 0, j = 0; i < memory.byteLength;) {
+        const source = sources[j++];
+
+        memory.set(source, i);
+        i += source.byteLength;
+    }
+
+    return memory;
+}
+
+async function encompress(data: Uint8Array, format?: CompressionFormat) {
+    return await new Response(new Response(data).body?.pipeThrough(new CompressionStream(format ?? "gzip"))).bytes();
+}
+
+async function decompress(data: Uint8Array, format?: CompressionFormat) {
+    return await new Response(new Response(data).body?.pipeThrough(new DecompressionStream(format ?? "gzip"))).bytes();
+}
+
 function deriveCRC32(...buffers: Uint8Array[]): number {
     const TABLE = <const> [
         0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988, 0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91,
@@ -33,27 +54,6 @@ function deriveCRC32(...buffers: Uint8Array[]): number {
     }
 
     return hash ^ 0xFFFFFFFF;
-}
-
-function byteConcat(...sources: Uint8Array[]) {
-    const memory = new Uint8Array(sources.reduce((n, {byteLength}) => n + byteLength, 0));
-
-    for (let i = 0, j = 0; i < memory.byteLength;) {
-        const source = sources[j++];
-
-        memory.set(source, i);
-        i += source.byteLength;
-    }
-
-    return memory;
-}
-
-async function encompress(data: Uint8Array, format?: CompressionFormat) {
-    return await new Response(new Response(data).body?.pipeThrough(new CompressionStream(format ?? "gzip"))).bytes();
-}
-
-async function decompress(data: Uint8Array, format?: CompressionFormat) {
-    return await new Response(new Response(data).body?.pipeThrough(new DecompressionStream(format ?? "gzip"))).bytes();
 }
 
 interface Chunk {
