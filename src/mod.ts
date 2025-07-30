@@ -2,7 +2,7 @@ const BYTE_PER_PIXEL = 3;
 const COLOR_DEPTH = 8;
 const COLOR_TYPE = 2;
 const FILTER_TYPE = 0;
-const MAGIC_MARK = <const> [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+const PNG_MAGIC = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] as const;
 
 function byteConcat(...sources: Uint8Array[]) {
     const memory = new Uint8Array(sources.reduce((n, {byteLength}) => n + byteLength, 0));
@@ -26,7 +26,7 @@ async function decompress(data: Uint8Array, format?: CompressionFormat) {
 }
 
 function deriveCRC32(...buffers: Uint8Array[]): number {
-    const TABLE = <const> [
+    const TABLE = [
         0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988, 0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91,
         0x1DB71064, 0x6AB020F2, 0xF3B97148, 0x84BE41DE, 0x1ADAD47D, 0x6DDDE4EB, 0xF4D4B551, 0x83D385C7, 0x136C9856, 0x646BA8C0, 0xFD62F97A, 0x8A65C9EC, 0x14015C4F, 0x63066CD9, 0xFA0F3D63, 0x8D080DF5,
         0x3B6E20C8, 0x4C69105E, 0xD56041E4, 0xA2677172, 0x3C03E4D1, 0x4B04D447, 0xD20D85FD, 0xA50AB56B, 0x35B5A8FA, 0x42B2986C, 0xDBBBC9D6, 0xACBCF940, 0x32D86CE3, 0x45DF5C75, 0xDCD60DCF, 0xABD13D59,
@@ -43,7 +43,7 @@ function deriveCRC32(...buffers: Uint8Array[]): number {
         0x86D3D2D4, 0xF1D4E242, 0x68DDB3F8, 0x1FDA836E, 0x81BE16CD, 0xF6B9265B, 0x6FB077E1, 0x18B74777, 0x88085AE6, 0xFF0F6A70, 0x66063BCA, 0x11010B5C, 0x8F659EFF, 0xF862AE69, 0x616BFFD3, 0x166CCF45,
         0xA00AE278, 0xD70DD2EE, 0x4E048354, 0x3903B3C2, 0xA7672661, 0xD06016F7, 0x4969474D, 0x3E6E77DB, 0xAED16A4A, 0xD9D65ADC, 0x40DF0B66, 0x37D83BF0, 0xA9BCAE53, 0xDEBB9EC5, 0x47B2CF7F, 0x30B5FFE9,
         0xBDBDF21C, 0xCABAC28A, 0x53B39330, 0x24B4A3A6, 0xBAD03605, 0xCDD70693, 0x54DE5729, 0x23D967BF, 0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94, 0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
-    ];
+    ] as const;
 
     let hash = 0xFFFFFFFF;
 
@@ -75,8 +75,8 @@ interface Chunk {
 export async function pngDecode(png: Uint8Array): Promise<{name: string; body: Uint8Array;}> {
     const dec = new TextDecoder();
 
-    for (let i = 0; i < MAGIC_MARK.length; i++) {
-        if (png[i] !== MAGIC_MARK[i]) {
+    for (let i = 0; i < PNG_MAGIC.length; i++) {
+        if (png[i] !== PNG_MAGIC[i]) {
             throw new ReferenceError("Invalid magic bytes.");
         }
 
@@ -85,7 +85,7 @@ export async function pngDecode(png: Uint8Array): Promise<{name: string; body: U
 
     const chunks = [];
 
-    for (let i = MAGIC_MARK.length; i < png.byteLength;) {
+    for (let i = PNG_MAGIC.length; i < png.byteLength;) {
         const view = new DataView(png.buffer);
 
         const size = view.getUint32(i);
@@ -214,5 +214,5 @@ export async function pngEncode({name, body}: {name: string; body: Uint8Array;})
     const chunkIDAT = createChunk("IDAT", await encompress(byteConcat(...rows), "deflate"));
     const chunkIEND = createChunk("IEND", new Uint8Array(0));
 
-    return byteConcat(new Uint8Array(MAGIC_MARK), chunkIHDR, chunkIDAT, chunkIEND);
+    return byteConcat(new Uint8Array(PNG_MAGIC), chunkIHDR, chunkIDAT, chunkIEND);
 }
