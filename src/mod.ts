@@ -63,15 +63,15 @@ interface Chunk {
 }
 
 /**
-* Extract binary from png image.
-* Input format is 24 bit color, gamma, no alpha, no filter.
-* @example
-* ```ts
-* const bin = await Deno.readFile("./file");
-* const encode = await pngEncode(bin);
-* const decode = await pngDecode(encode);
-* ```
-*/
+ * Extract binary from png image.
+ * Input format is 24 bit color, gamma, no alpha, no filter.
+ * @example
+ * ```ts
+ * const bin = await Deno.readFile("./file");
+ * const encode = await pngEncode(bin);
+ * const decode = await pngDecode(encode);
+ * ```
+ */
 export async function pngDecode(png: Uint8Array): Promise<{name: string; body: Uint8Array;}> {
     const dec = new TextDecoder();
 
@@ -169,15 +169,15 @@ function createChunk(name: string, body: Uint8Array) {
 }
 
 /**
-* Generate png image from binary.
-* Output format is 24 bit color, gamma, no alpha, no filter.
-* @example
-* ```ts
-* const bin = await Deno.readFile("./file");
-* const encode = await pngEncode(bin);
-* const decode = await pngDecode(encode);
-* ```
-*/
+ * Generate png image from binary.
+ * Output format is 24 bit color, gamma, no alpha, no filter.
+ * @example
+ * ```ts
+ * const bin = await Deno.readFile("./file");
+ * const encode = await pngEncode(bin);
+ * const decode = await pngDecode(encode);
+ * ```
+ */
 export async function pngEncode({name, body}: {name: string; body: Uint8Array;}): Promise<Uint8Array> {
     const name_ = enc.encode(name);
     const imageWidth = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT * 2 + name_.byteLength + body.byteLength) / BYTE_PER_PIXEL));
