@@ -77,7 +77,7 @@ export async function pngDecode(png: Uint8Array): Promise<{name: string; body: U
 
     for (let i = 0; i < PNG_MAGIC.length; i++) {
         if (png[i] !== PNG_MAGIC[i]) {
-            throw new ReferenceError("Invalid magic bytes.");
+            throw new Error("Invalid magic bytes.");
         }
 
         continue;
@@ -98,7 +98,7 @@ export async function pngDecode(png: Uint8Array): Promise<{name: string; body: U
         i += Int32Array.BYTES_PER_ELEMENT;
 
         if (deriveCRC32(name, body) !== crc32) {
-            throw new ReferenceError("Checksum mismatch.");
+            throw new Error("Checksum mismatch.");
         }
 
         chunks.push({
@@ -113,13 +113,13 @@ export async function pngDecode(png: Uint8Array): Promise<{name: string; body: U
     const chunkIEND = chunks.find(({name}) => name === "IEND")?.body;
 
     if (!chunkIHDR || !chunkIDAT || !chunkIEND) {
-        throw new ReferenceError("Missing chunks.");
+        throw new Error("Missing chunks.");
     }
 
     const chunkViewIHDR = new DataView(chunkIHDR.buffer);
 
     if (chunkViewIHDR.getUint8(8) !== COLOR_DEPTH || chunkViewIHDR.getUint8(9) !== COLOR_TYPE) {
-        throw new ReferenceError("Invalid color format.");
+        throw new Error("Invalid color format.");
     }
 
     const nbytePerLine = chunkViewIHDR.getUint32(0) * BYTE_PER_PIXEL;
@@ -129,7 +129,7 @@ export async function pngDecode(png: Uint8Array): Promise<{name: string; body: U
         *[Symbol.iterator]() {
             for (let i = 0; i < image.byteLength; i++) {
                 if (image[i] !== FILTER_TYPE) {
-                    throw new ReferenceError("Invalid color filter.");
+                    throw new Error("Invalid color filter.");
                 }
 
                 yield image.slice(i, i += nbytePerLine);
