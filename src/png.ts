@@ -6,13 +6,7 @@ const BYTE_PER_PIXEL = 3;
 const COLOR_DEPTH = 8;
 const COLOR_TYPE = 2;
 const FILTER_TYPE = 0;
-const PNG_MAGIC = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] as const;
-
-interface Chunk {
-    name: string;
-    body: Uint8Array;
-    crc32: number;
-}
+const MAGIC_CODE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] as const;
 
 /**
  * Extract binary from png image.
@@ -27,8 +21,8 @@ interface Chunk {
 export async function decode(png: Uint8Array<ArrayBuffer>): Promise<{name: string; body: Uint8Array;}> {
     const dec = new TextDecoder();
 
-    for (let i = 0; i < PNG_MAGIC.length; i++) {
-        if (png[i] !== PNG_MAGIC[i]) {
+    for (let i = 0; i < MAGIC_CODE.length; i++) {
+        if (png[i] !== MAGIC_CODE[i]) {
             throw new Error("Invalid magic bytes.");
         }
 
@@ -37,7 +31,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<{name: strin
 
     const chunks = [];
 
-    for (let i = PNG_MAGIC.length; i < png.byteLength;) {
+    for (let i = MAGIC_CODE.length; i < png.byteLength;) {
         const view = new DataView(png.buffer);
 
         const size = view.getUint32(i);
@@ -166,5 +160,5 @@ export async function encode({name, body}: {name: string; body: Uint8Array;}): P
     const chunkIDAT = createChunk("IDAT", await encompress(byteJoin(...rows), "deflate"));
     const chunkIEND = createChunk("IEND", new Uint8Array(0));
 
-    return byteJoin(new Uint8Array(PNG_MAGIC), chunkIHDR, chunkIDAT, chunkIEND);
+    return byteJoin(new Uint8Array(MAGIC_CODE), chunkIHDR, chunkIDAT, chunkIEND);
 }
