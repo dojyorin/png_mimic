@@ -23,7 +23,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
     for (let i = 0; i < MAGIC_CODE.length; i++) {
         if (png[i] !== MAGIC_CODE[i]) {
-            throw new Error("Invalid magic bytes.");
+            throw new Error("Invalid magic.");
         }
 
         continue;
