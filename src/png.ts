@@ -1,3 +1,7 @@
+import {byteJoin} from "./utility/byte.ts";
+import {encompress, uncompress} from "./utility/compress.ts";
+import {crc32} from "./utility/crc32.ts";
+
 const BYTE_PER_PIXEL = 3;
 const COLOR_DEPTH = 8;
 const COLOR_TYPE = 2;
@@ -20,7 +24,7 @@ interface Chunk {
  * const decode = await pngDecode(encode);
  * ```
  */
-export async function pngDecode(png: Uint8Array): Promise<{name: string; body: Uint8Array;}> {
+export async function decode(png: Uint8Array<ArrayBuffer>): Promise<{name: string; body: Uint8Array;}> {
     const dec = new TextDecoder();
 
     for (let i = 0; i < PNG_MAGIC.length; i++) {
@@ -42,17 +46,17 @@ export async function pngDecode(png: Uint8Array): Promise<{name: string; body: U
         const name = png.slice(i, i += 4);
         const body = png.slice(i, i += size);
 
-        const crc32 = view.getInt32(i);
+        const checksum = view.getInt32(i);
         i += Int32Array.BYTES_PER_ELEMENT;
 
-        if (deriveCRC32(name, body) !== crc32) {
+        if (crc32(name, body) !== checksum) {
             throw new Error("Checksum mismatch.");
         }
 
         chunks.push({
             name: dec.decode(name),
             body: body,
-            crc32: crc32
+            crc32: checksum
         });
     }
 
@@ -71,7 +75,7 @@ export async function pngDecode(png: Uint8Array): Promise<{name: string; body: U
     }
 
     const nbytePerLine = chunkViewIHDR.getUint32(0) * BYTE_PER_PIXEL;
-    const image = await decompress(chunkIDAT, "deflate");
+    const image = await uncompress(chunkIDAT, "deflate");
 
     const rows = Array.from({
         *[Symbol.iterator]() {
@@ -86,7 +90,7 @@ export async function pngDecode(png: Uint8Array): Promise<{name: string; body: U
     });
 
     let pos = 0;
-    const rawimage = byteConcat(...rows);
+    const rawimage = byteJoin(...rows);
     const rawimageview = new DataView(rawimage.buffer);
     const nsize = rawimageview.getUint32(pos);
     pos += Uint32Array.BYTES_PER_ELEMENT;
@@ -111,9 +115,9 @@ function createChunk(name: string, body: Uint8Array) {
     const xb = new DataView(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT));
 
     xa.setUint32(0, body.byteLength);
-    xb.setInt32(0, deriveCRC32(_name, body));
+    xb.setInt32(0, crc32(_name, body));
 
-    return byteConcat(new Uint8Array(xa.buffer), _name, body, new Uint8Array(xb.buffer));
+    return byteJoin(new Uint8Array(xa.buffer), _name, body, new Uint8Array(xb.buffer));
 }
 
 /**
@@ -126,7 +130,7 @@ function createChunk(name: string, body: Uint8Array) {
  * const decode = await pngDecode(encode);
  * ```
  */
-export async function pngEncode({name, body}: {name: string; body: Uint8Array;}): Promise<Uint8Array> {
+export async function encode({name, body}: {name: string; body: Uint8Array;}): Promise<Uint8Array> {
     const name_ = enc.encode(name);
     const imageWidth = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT * 2 + name_.byteLength + body.byteLength) / BYTE_PER_PIXEL));
     const frameSize = imageWidth ** 2 * BYTE_PER_PIXEL;
@@ -136,13 +140,13 @@ export async function pngEncode({name, body}: {name: string; body: Uint8Array;})
     viewx.setUint32(0, name_.byteLength);
     viewx.setUint32(Uint32Array.BYTES_PER_ELEMENT, body.byteLength);
 
-    const bodyx = byteConcat(new Uint8Array(viewx.buffer), name_, body);
+    const bodyx = byteJoin(new Uint8Array(viewx.buffer), name_, body);
 
     const rows = Array.from({
         *[Symbol.iterator]() {
             for (let i = 0; i < frameSize; undefined) {
                 const row = bodyx.slice(i, i += nbytePerLine);
-                yield byteConcat(new Uint8Array([FILTER_TYPE]), row, new Uint8Array(nbytePerLine - row.byteLength));
+                yield byteJoin(new Uint8Array([FILTER_TYPE]), row, new Uint8Array(nbytePerLine - row.byteLength));
             }
         }
     });
@@ -159,8 +163,8 @@ export async function pngEncode({name, body}: {name: string; body: Uint8Array;})
     pos += Uint8Array.BYTES_PER_ELEMENT;
 
     const chunkIHDR = createChunk("IHDR", new Uint8Array(xbvv.buffer));
-    const chunkIDAT = createChunk("IDAT", await encompress(byteConcat(...rows), "deflate"));
+    const chunkIDAT = createChunk("IDAT", await encompress(byteJoin(...rows), "deflate"));
     const chunkIEND = createChunk("IEND", new Uint8Array(0));
 
-    return byteConcat(new Uint8Array(PNG_MAGIC), chunkIHDR, chunkIDAT, chunkIEND);
+    return byteJoin(new Uint8Array(PNG_MAGIC), chunkIHDR, chunkIDAT, chunkIEND);
 }
