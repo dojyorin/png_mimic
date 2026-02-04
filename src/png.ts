@@ -18,7 +18,7 @@ const MAGIC_CODE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] as const;
  * const decode = await pngDecode(encode);
  * ```
  */
-export async function decode(png: Uint8Array<ArrayBuffer>): Promise<{name: string; body: Uint8Array;}> {
+export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
     const dec = new TextDecoder();
 
     for (let i = 0; i < MAGIC_CODE.length; i++) {
@@ -124,7 +124,7 @@ function createChunk(name: string, body: Uint8Array) {
  * const decode = await pngDecode(encode);
  * ```
  */
-export async function encode({name, body}: {name: string; body: Uint8Array;}): Promise<Uint8Array> {
+export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
     const name_ = enc.encode(name);
     const imageWidth = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT * 2 + name_.byteLength + body.byteLength) / BYTE_PER_PIXEL));
     const frameSize = imageWidth ** 2 * BYTE_PER_PIXEL;
