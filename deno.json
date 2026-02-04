@@ -1,0 +1,19 @@
+{
+    "name": "png_mimic",
+    "license": "MIT",
+    "version": "1.0.0",
+    "lock": false,
+    "unstable": [],
+    "imports": {},
+    "exports": {
+        ".": "./src/mod.ts"
+    },
+    "tasks": {
+        "test": "deno test -R --clean --parallel"
+    },
+    "test": {
+        "include": [
+            "./test"
+        ]
+    }
+}
