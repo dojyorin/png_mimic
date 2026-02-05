@@ -126,7 +126,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
         if (i === 1) {
             new DataView(idatContent.buffer).setUint32(i, data.byteLength);
             i += 4;
-            idatContent.set(data.subarray(j, i += j += bytePerWidth - i), i);
+            idatContent.set(data.subarray(j, j += bytePerWidth - i), i);
             i += bytePerWidth - i;
         } else {
             idatContent.set(data.subarray(j, j += bytePerWidth), i);
