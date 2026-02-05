@@ -35,16 +35,13 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("Invalid IEND chunk.");
     }
 
-    const width = new DataView(png.buffer).getUint32(MAGIC.byteLength + 8);
-    const height = new DataView(png.buffer).getUint32(MAGIC.byteLength + 12);
+    const pngView = new DataView(png.buffer);
+    const width = pngView.getUint32(MAGIC.byteLength + 8);
+    const height = pngView.getUint32(MAGIC.byteLength + 12);
+    const ihdr = generateIHDR(width, height);
 
-    const ihdr = IHDR.slice();
-    new DataView(ihdr.buffer).setUint32(8, width);
-    new DataView(ihdr.buffer).setUint32(12, height);
-    new DataView(ihdr.buffer).setInt32(ihdr.byteLength - 4, crc32(ihdr.subarray(4, -4)));
-
-    if (condition) {
-        
+    if (png.subarray(MAGIC.byteLength, MAGIC.byteLength + ihdr.byteLength).toHex() !== ihdr.toHex()) {
+        throw new Error("Invalid IHDR chunk.");
     }
 
     const chunks = [];
