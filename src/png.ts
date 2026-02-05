@@ -118,10 +118,17 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     new DataView(ihdr.buffer).setInt32(-4, crc32(ihdr.subarray(4, -4)));
 
     const idatContent = new Uint8Array(width * height * BYTE_PER_PIXEL + height);
-    const bytePerWidth = width * BYTE_PER_PIXEL + 1;
+    const bytePerWidth = width * BYTE_PER_PIXEL;
 
-    for (let i = 0; i < idatContent.byteLength;) {
-        idatContent.set();
+    for (let i = 0, j = 0; i < idatContent.byteLength;) {
+        if (++i === 1) {
+            new DataView(idatContent.buffer).setUint32(i, data.byteLength);
+            i += 4;
+            idatContent.set(data.subarray(j, bytePerWidth - i), i);
+        } else {
+            idatContent.set(data.subarray(j, j += bytePerWidth), i);
+            i += bytePerWidth;
+        }
     }
 
     const idatContentCompressed = await encompress(idatContent, "deflate");
