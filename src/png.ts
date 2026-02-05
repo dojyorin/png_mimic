@@ -117,7 +117,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     new DataView(ihdr.buffer).setUint32(12, height);
     new DataView(ihdr.buffer).setInt32(ihdr.byteLength - 4, crc32(ihdr.subarray(4, -4)));
 
-    const idatContent = new Uint8Array(width * height * BYTE_PER_PIXEL + height);
+    const idatContent = new Uint8Array((Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL) * height);
     const bytePerWidth = width * BYTE_PER_PIXEL;
 
     for (let i = 0, j = 0; i < data.byteLength;) {
