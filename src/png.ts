@@ -120,17 +120,17 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const idatContent = new Uint8Array((Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL) * height);
     const bytePerWidth = width * BYTE_PER_PIXEL;
 
-    for (let i = 0, j = 0; i < data.byteLength;) {
-        idatContent.set([FILTER_TYPE], j++);
+    for (let i = 0, j = 0; i < idatContent.byteLength;) {
+        idatContent.set([FILTER_TYPE], i++);
 
-        if (j === 1) {
-            new DataView(idatContent.buffer).setUint32(j, data.byteLength);
-            j += 4;
-            idatContent.set(data.subarray(i, i += bytePerWidth - j), j);
-            j += bytePerWidth - j;
+        if (i === 1) {
+            new DataView(idatContent.buffer).setUint32(i, data.byteLength);
+            i += 4;
+            idatContent.set(data.subarray(j, i += j += bytePerWidth - i), i);
+            i += bytePerWidth - i;
         } else {
-            idatContent.set(data.subarray(i, i += bytePerWidth), j);
-            j += bytePerWidth;
+            idatContent.set(data.subarray(j, j += bytePerWidth), i);
+            i += bytePerWidth;
         }
     }
 
