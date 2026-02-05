@@ -1,4 +1,3 @@
-import {byteJoin} from "./utility/byte.ts";
 import {encompress, uncompress} from "./utility/compress.ts";
 import {crc32} from "./utility/crc32.ts";
 
@@ -17,6 +16,22 @@ function generateIHDR(height: number, width: number) {
     view.setInt32(-4, crc32(buf.subarray(4, -4)));
 
     return buf;
+}
+
+function getUint32(buf: Uint8Array<ArrayBuffer>, offset: number) {
+    return new DataView(buf.buffer).getUint32(offset);
+}
+
+function setUint32(buf: Uint8Array<ArrayBuffer>, offset: number, n: number) {
+    new DataView(buf.buffer).setUint32(offset, n);
+}
+
+function getInt32(buf: Uint8Array<ArrayBuffer>, offset: number) {
+    return new DataView(buf.buffer).getInt32(offset);
+}
+
+function setInt32(buf: Uint8Array<ArrayBuffer>, offset: number, n: number) {
+    new DataView(buf.buffer).setInt32(offset, n);
 }
 
 /**
@@ -130,6 +145,8 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const png = new Uint8Array(MAGIC.byteLength + IHDR.byteLength + (Uint32Array.BYTES_PER_ELEMENT * 3 + width ** 2 * BYTE_PER_PIXEL + width) + IEND.byteLength);
     png.set(MAGIC, 0);
     png.set(generateIHDR(width, width), MAGIC.byteLength);
+    png.set();
+    png.set();
     png.set(IEND, -IEND.byteLength);
 
     const bodyx = byteJoin(new Uint8Array(new Uint32Array([data.byteLength]).buffer), data);
