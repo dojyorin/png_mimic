@@ -10,7 +10,7 @@ const MAGIC_CODE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] as const;
 
 /**
  * Extract binary from png image.
- * Input format is 24 bit color, gamma, no alpha, no filter.
+ * Input format is 24 bit color, no alpha, no filter.
  * @example
  * ```ts
  * const bin = await Deno.readFile("./file");
@@ -116,7 +116,7 @@ function createChunk(name: string, body: Uint8Array) {
 
 /**
  * Generate png image from binary.
- * Output format is 24 bit color, gamma, no alpha, no filter.
+ * Output format is 24 bit color, no alpha, no filter.
  * @example
  * ```ts
  * const bin = await Deno.readFile("./file");
