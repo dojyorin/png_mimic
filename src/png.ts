@@ -46,7 +46,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("Invalid IHDR chunk.");
     }
 
-    let idat: Uint8Array | undefined = undefined;
+    let idat: Uint8Array<ArrayBuffer> | undefined = undefined;
 
     for (let i = MAGIC.byteLength; i < png.byteLength;) {
         const size = pngView.getUint32(i);
