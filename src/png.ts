@@ -134,14 +134,3 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
 
     return png;
 }
-
-function generateIHDR(height: number, width: number) {
-    const buf = IHDR.slice();
-    const view = new DataView(buf.buffer);
-
-    view.setUint32(8, width);
-    view.setUint32(12, height);
-    view.setInt32(-4, crc32(buf.subarray(4, -4)));
-
-    return buf;
-}
