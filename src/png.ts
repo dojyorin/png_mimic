@@ -21,12 +21,12 @@ function generateIHDR(height: number, width: number) {
 
 /**
  * Extract binary from png image.
- * Input format is 24 bit color, no alpha, no filter.
+ * Input format is 24 bits RGB, no alpha, no filter.
  * @example
  * ```ts
  * const bin = await Deno.readFile("./file");
- * const encode = await pngEncode(bin);
- * const decode = await pngDecode(encode);
+ * const encode = await encode(bin);
+ * const decode = await decode(encode);
  * ```
  */
 export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
@@ -112,61 +112,31 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     };
 }
 
-const enc = new TextEncoder();
-
-function createChunk(name: string, body: Uint8Array) {
-    const _name = enc.encode(name);
-    const xa = new DataView(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT));
-    const xb = new DataView(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT));
-
-    xa.setUint32(0, body.byteLength);
-    xb.setInt32(0, crc32(_name, body));
-
-    return byteJoin(new Uint8Array(xa.buffer), _name, body, new Uint8Array(xb.buffer));
-}
-
 /**
  * Generate png image from binary.
- * Output format is 24 bit color, no alpha, no filter.
+ * Output format is 24 bits RGB, no alpha, no filter.
  * @example
  * ```ts
  * const bin = await Deno.readFile("./file");
- * const encode = await pngEncode(bin);
- * const decode = await pngDecode(encode);
+ * const encode = await encode(bin);
+ * const decode = await decode(encode);
  * ```
  */
 export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-    const imageWidth = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT + data.byteLength) / BYTE_PER_PIXEL));
-    const maxByteLength = imageWidth ** 2 * BYTE_PER_PIXEL;
-    const maxByteLengthPerRow = imageWidth * BYTE_PER_PIXEL;
+    const width = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT + data.byteLength) / BYTE_PER_PIXEL));
+    const maxByteLength = width ** 2 * BYTE_PER_PIXEL;
+    const maxByteLengthPerRow = width * BYTE_PER_PIXEL;
 
-    const png = new Uint8Array(MAGIC_CODE.length + IHDR_SIZE + (imageWidth ** 2 * BYTE_PER_PIXEL + imageWidth) + IEND_SIZE);
+    const png = new Uint8Array(MAGIC.byteLength + IHDR.byteLength + (Uint32Array.BYTES_PER_ELEMENT * 3 + width ** 2 * BYTE_PER_PIXEL + width) + IEND.byteLength);
+    png.set(MAGIC, 0);
+    png.set(generateIHDR(width, width), MAGIC.byteLength);
+    png.set(IEND, -IEND.byteLength);
 
     const bodyx = byteJoin(new Uint8Array(new Uint32Array([data.byteLength]).buffer), data);
 
-    const rows = Array.from({
-        *[Symbol.iterator]() {
-            for (let i = 0; i < maxByteLength; undefined) {
-                const row = bodyx.slice(i, i += maxByteLengthPerRow);
-                yield byteJoin(new Uint8Array([FILTER_TYPE]), row, new Uint8Array(maxByteLengthPerRow - row.byteLength));
-            }
-        }
-    });
+    for (let i = MAGIC.byteLength + IHDR.byteLength; i < maxByteLength;) {
 
-    let pos = 0;
-    const xbvv = new DataView(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT * 2 + Uint8Array.BYTES_PER_ELEMENT * 2 + 3));
-    xbvv.setUint32(pos, imageWidth);
-    pos += Uint32Array.BYTES_PER_ELEMENT;
-    xbvv.setUint32(pos, imageWidth);
-    pos += Uint32Array.BYTES_PER_ELEMENT;
-    xbvv.setUint8(pos, COLOR_DEPTH);
-    pos += Uint8Array.BYTES_PER_ELEMENT;
-    xbvv.setUint8(pos, COLOR_TYPE);
-    pos += Uint8Array.BYTES_PER_ELEMENT;
+    }
 
-    const chunkIHDR = createChunk("IHDR", new Uint8Array(xbvv.buffer));
-    const chunkIDAT = createChunk("IDAT", await encompress(byteJoin(...rows), "deflate"));
-    const chunkIEND = createChunk("IEND", new Uint8Array(0));
-
-    return byteJoin(new Uint8Array(MAGIC_CODE), chunkIHDR, chunkIDAT, chunkIEND);
+    return png;
 }
