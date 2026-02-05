@@ -142,7 +142,11 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     idat.set(idatContentCompressed, 8);
     new DataView(idat.buffer).setInt32(idat.byteLength - 4, crc32(idat.subarray(4, -4)));
 
-    const png = new Uint8Array();
+    const png = new Uint8Array(MAGIC.byteLength + ihdr.byteLength + idat.byteLength + IEND.byteLength);
+    png.set(MAGIC, 0);
+    png.set(ihdr, MAGIC.byteLength);
+    png.set(idat, MAGIC.byteLength + ihdr.byteLength);
+    png.set(IEND, MAGIC.byteLength + ihdr.byteLength + idat.byteLength);
 
     return png;
 }
