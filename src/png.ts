@@ -121,7 +121,9 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const bytePerWidth = width * BYTE_PER_PIXEL;
 
     for (let i = 0, j = 0; i < data.byteLength;) {
-        if (j++ === 0) {
+        idatContent.set([FILTER_TYPE], j++);
+
+        if (j === 1) {
             new DataView(idatContent.buffer).setUint32(j, data.byteLength);
             j += 4;
             idatContent.set(data.subarray(i, i += bytePerWidth - j), j);
