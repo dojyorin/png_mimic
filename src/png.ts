@@ -4,8 +4,17 @@ import {crc32} from "./utility/crc32.ts";
 const BYTE_PER_PIXEL = 3;
 const FILTER_TYPE = 0;
 const MAGIC = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-const IHDR = new Uint8Array([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0xB4, 0xE9, 0xEB, 0x45]);
 const IEND = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
+
+function generateIHDR(width: number, height: number) {
+    const ihdr = new Uint8Array([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0xB4, 0xE9, 0xEB, 0x45]);
+    const ihdrView = new DataView(ihdr.buffer);
+    ihdrView.setUint32(8, width);
+    ihdrView.setUint32(12, height);
+    ihdrView.setInt32(ihdr.byteLength - 4, crc32(ihdr.subarray(4, -4)));
+
+    return ihdr;
+}
 
 /**
  * Extract binary from png image.
@@ -26,9 +35,21 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("Invalid IEND chunk.");
     }
 
+    const width = new DataView(png.buffer).getUint32(MAGIC.byteLength + 8);
+    const height = new DataView(png.buffer).getUint32(MAGIC.byteLength + 12);
+
+    const ihdr = IHDR.slice();
+    new DataView(ihdr.buffer).setUint32(8, width);
+    new DataView(ihdr.buffer).setUint32(12, height);
+    new DataView(ihdr.buffer).setInt32(ihdr.byteLength - 4, crc32(ihdr.subarray(4, -4)));
+
+    if (condition) {
+        
+    }
+
     const chunks = [];
 
-    for (let i = MAGIC.byteLength; i < png.byteLength;) {
+    for (let i = MAGIC.byteLength + IHDR.byteLength; i < png.byteLength - IEND.byteLength;) {
         const view = new DataView(png.buffer);
 
         const size = view.getUint32(i);
@@ -51,13 +72,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         });
     }
 
-    const chunkIHDR = chunks.find(({name}) => name === "IHDR")?.body;
     const chunkIDAT = chunks.find(({name}) => name === "IDAT")?.body;
-    const chunkIEND = chunks.find(({name}) => name === "IEND")?.body;
-
-    if (!chunkIHDR || !chunkIDAT || !chunkIEND) {
-        throw new Error("Missing chunks.");
-    }
 
     const chunkViewIHDR = new DataView(chunkIHDR.buffer);
 
@@ -89,13 +104,9 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const bsize = rawimageview.getUint32(pos);
     pos += Uint32Array.BYTES_PER_ELEMENT;
 
-    const name = dec.decode(rawimage.subarray(pos, pos += nsize));
-    const body = rawimage.slice(pos, pos += bsize);
+    const data = rawimage.slice(pos, pos += bsize);
 
-    return {
-        name: name,
-        body: body
-    };
+    return data;
 }
 
 /**
@@ -112,10 +123,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const width = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT + data.byteLength) / BYTE_PER_PIXEL));
     const height = width;
 
-    const ihdr = IHDR.slice();
-    new DataView(ihdr.buffer).setUint32(8, width);
-    new DataView(ihdr.buffer).setUint32(12, height);
-    new DataView(ihdr.buffer).setInt32(ihdr.byteLength - 4, crc32(ihdr.subarray(4, -4)));
+    const ihdr = generateIHDR(width, height);
 
     const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
     const idatContent = new Uint8Array(bytePerWidth * height);
@@ -135,10 +143,11 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const idatContentCompressed = await encompress(idatContent, "deflate");
 
     const idat = new Uint8Array(Uint32Array.BYTES_PER_ELEMENT * 3 + idatContentCompressed.byteLength);
-    new DataView(idat.buffer).setUint32(0, idatContentCompressed.byteLength);
+    const idatView = new DataView(idat.buffer);
+    idatView.setUint32(0, idatContentCompressed.byteLength);
     idat.set([0x49, 0x44, 0x41, 0x54], 4);
     idat.set(idatContentCompressed, 8);
-    new DataView(idat.buffer).setInt32(idat.byteLength - 4, crc32(idat.subarray(4, -4)));
+    idatView.setInt32(idat.byteLength - 4, crc32(idat.subarray(4, -4)));
 
     const png = new Uint8Array(MAGIC.byteLength + ihdr.byteLength + idat.byteLength + IEND.byteLength);
     png.set(MAGIC, 0);
