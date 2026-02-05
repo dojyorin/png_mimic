@@ -46,21 +46,21 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("Invalid IHDR chunk.");
     }
 
-    for (let i = MAGIC.byteLength + ihdr.byteLength; i < png.byteLength - IEND.byteLength;) {
-        const view = new DataView(png.buffer);
+    let idat: Uint8Array | undefined = undefined;
 
-        const size = view.getUint32(i);
-        i += Uint32Array.BYTES_PER_ELEMENT;
+    for (let i = MAGIC.byteLength; i < png.byteLength;) {
+        const size = pngView.getUint32(i);
+        const chunk = png.subarray(i, i += Uint32Array.BYTES_PER_ELEMENT * 3 + size);
 
-        const name = png.slice(i, i += 4);
-        const body = png.slice(i, i += size);
+        if (chunk.subarray(4, 8).toHex() === "49444154") {
+            idat = chunk;
 
-        const checksum = view.getInt32(i);
-        i += Int32Array.BYTES_PER_ELEMENT;
-
-        if (crc32(name, body) !== checksum) {
-            throw new Error("Checksum mismatch.");
+            break;
         }
+    }
+
+    if (!idat) {
+        throw new Error("IDAT chunk not found.");
     }
 
     const data = new Uint8Array();
