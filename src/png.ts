@@ -36,8 +36,10 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     }
 
     const pngView = new DataView(png.buffer);
+
     const width = pngView.getUint32(MAGIC.byteLength + 8);
     const height = pngView.getUint32(MAGIC.byteLength + 12);
+
     const ihdr = generateIHDR(width, height);
 
     if (png.subarray(MAGIC.byteLength, MAGIC.byteLength + ihdr.byteLength).toHex() !== ihdr.toHex()) {
