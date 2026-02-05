@@ -17,86 +17,86 @@ const IEND = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xA
  * const decode = await decode(encode);
  * ```
  */
-export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-    if (png.subarray(0, MAGIC.byteLength).toHex() !== MAGIC.toHex()) {
-        throw new Error("Invalid magic.");
-    }
+// export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+//     if (png.subarray(0, MAGIC.byteLength).toHex() !== MAGIC.toHex()) {
+//         throw new Error("Invalid magic.");
+//     }
 
-    if (png.subarray(-IEND.byteLength).toHex() !== IEND.toHex()) {
-        throw new Error("Invalid IEND chunk.");
-    }
+//     if (png.subarray(-IEND.byteLength).toHex() !== IEND.toHex()) {
+//         throw new Error("Invalid IEND chunk.");
+//     }
 
-    const chunks = [];
+//     const chunks = [];
 
-    for (let i = MAGIC_CODE.length; i < png.byteLength;) {
-        const view = new DataView(png.buffer);
+//     for (let i = MAGIC_CODE.length; i < png.byteLength;) {
+//         const view = new DataView(png.buffer);
 
-        const size = view.getUint32(i);
-        i += Uint32Array.BYTES_PER_ELEMENT;
+//         const size = view.getUint32(i);
+//         i += Uint32Array.BYTES_PER_ELEMENT;
 
-        const name = png.slice(i, i += 4);
-        const body = png.slice(i, i += size);
+//         const name = png.slice(i, i += 4);
+//         const body = png.slice(i, i += size);
 
-        const checksum = view.getInt32(i);
-        i += Int32Array.BYTES_PER_ELEMENT;
+//         const checksum = view.getInt32(i);
+//         i += Int32Array.BYTES_PER_ELEMENT;
 
-        if (crc32(name, body) !== checksum) {
-            throw new Error("Checksum mismatch.");
-        }
+//         if (crc32(name, body) !== checksum) {
+//             throw new Error("Checksum mismatch.");
+//         }
 
-        chunks.push({
-            name: dec.decode(name),
-            body: body,
-            crc32: checksum
-        });
-    }
+//         chunks.push({
+//             name: dec.decode(name),
+//             body: body,
+//             crc32: checksum
+//         });
+//     }
 
-    const chunkIHDR = chunks.find(({name}) => name === "IHDR")?.body;
-    const chunkIDAT = chunks.find(({name}) => name === "IDAT")?.body;
-    const chunkIEND = chunks.find(({name}) => name === "IEND")?.body;
+//     const chunkIHDR = chunks.find(({name}) => name === "IHDR")?.body;
+//     const chunkIDAT = chunks.find(({name}) => name === "IDAT")?.body;
+//     const chunkIEND = chunks.find(({name}) => name === "IEND")?.body;
 
-    if (!chunkIHDR || !chunkIDAT || !chunkIEND) {
-        throw new Error("Missing chunks.");
-    }
+//     if (!chunkIHDR || !chunkIDAT || !chunkIEND) {
+//         throw new Error("Missing chunks.");
+//     }
 
-    const chunkViewIHDR = new DataView(chunkIHDR.buffer);
+//     const chunkViewIHDR = new DataView(chunkIHDR.buffer);
 
-    if (chunkViewIHDR.getUint8(8) !== COLOR_DEPTH || chunkViewIHDR.getUint8(9) !== COLOR_TYPE) {
-        throw new Error("Invalid color format.");
-    }
+//     if (chunkViewIHDR.getUint8(8) !== COLOR_DEPTH || chunkViewIHDR.getUint8(9) !== COLOR_TYPE) {
+//         throw new Error("Invalid color format.");
+//     }
 
-    const nbytePerLine = chunkViewIHDR.getUint32(0) * BYTE_PER_PIXEL;
-    const image = await uncompress(chunkIDAT, "deflate");
+//     const nbytePerLine = chunkViewIHDR.getUint32(0) * BYTE_PER_PIXEL;
+//     const image = await uncompress(chunkIDAT, "deflate");
 
-    const rows = Array.from({
-        *[Symbol.iterator]() {
-            for (let i = 0; i < image.byteLength; i++) {
-                if (image[i] !== FILTER_TYPE) {
-                    throw new Error("Invalid color filter.");
-                }
+//     const rows = Array.from({
+//         *[Symbol.iterator]() {
+//             for (let i = 0; i < image.byteLength; i++) {
+//                 if (image[i] !== FILTER_TYPE) {
+//                     throw new Error("Invalid color filter.");
+//                 }
 
-                yield image.slice(i, i += nbytePerLine);
-            }
-        }
-    });
+//                 yield image.slice(i, i += nbytePerLine);
+//             }
+//         }
+//     });
 
-    let pos = 0;
-    const rawimage = byteJoin(...rows);
-    const rawimageview = new DataView(rawimage.buffer);
-    const nsize = rawimageview.getUint32(pos);
-    pos += Uint32Array.BYTES_PER_ELEMENT;
+//     let pos = 0;
+//     const rawimage = byteJoin(...rows);
+//     const rawimageview = new DataView(rawimage.buffer);
+//     const nsize = rawimageview.getUint32(pos);
+//     pos += Uint32Array.BYTES_PER_ELEMENT;
 
-    const bsize = rawimageview.getUint32(pos);
-    pos += Uint32Array.BYTES_PER_ELEMENT;
+//     const bsize = rawimageview.getUint32(pos);
+//     pos += Uint32Array.BYTES_PER_ELEMENT;
 
-    const name = dec.decode(rawimage.subarray(pos, pos += nsize));
-    const body = rawimage.slice(pos, pos += bsize);
+//     const name = dec.decode(rawimage.subarray(pos, pos += nsize));
+//     const body = rawimage.slice(pos, pos += bsize);
 
-    return {
-        name: name,
-        body: body
-    };
-}
+//     return {
+//         name: name,
+//         body: body
+//     };
+// }
 
 /**
  * Generate png image from binary.
@@ -115,7 +115,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const ihdr = IHDR.slice();
     new DataView(ihdr.buffer).setUint32(8, width);
     new DataView(ihdr.buffer).setUint32(12, height);
-    new DataView(ihdr.buffer).setInt32(-4, crc32(ihdr.subarray(4, -4)));
+    new DataView(ihdr.buffer).setInt32(ihdr.byteLength - 4, crc32(ihdr.subarray(4, -4)));
 
     const idatContent = new Uint8Array(width * height * BYTE_PER_PIXEL + height);
     const bytePerWidth = width * BYTE_PER_PIXEL;
@@ -140,7 +140,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     new DataView(idat.buffer).setUint32(0, idatContentCompressed.byteLength);
     idat.set([0x49, 0x44, 0x41, 0x54], 4);
     idat.set(idatContentCompressed, 8);
-    new DataView(idat.buffer).setInt32(-4, crc32(idat.subarray(4, -4)));
+    new DataView(idat.buffer).setInt32(idat.byteLength - 4, crc32(idat.subarray(4, -4)));
 
     const png = new Uint8Array();
 
