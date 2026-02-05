@@ -117,21 +117,19 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     new DataView(ihdr.buffer).setUint32(12, height);
     new DataView(ihdr.buffer).setInt32(ihdr.byteLength - 4, crc32(ihdr.subarray(4, -4)));
 
-    const idatContent = new Uint8Array((Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL) * height);
-    const bytePerWidth = width * BYTE_PER_PIXEL;
+    const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
+    const idatContent = new Uint8Array(bytePerWidth * height);
 
-    for (let i = 0, j = 0; i < idatContent.byteLength;) {
-        idatContent.set([FILTER_TYPE], i++);
+    for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
+        const first = i === 0;
+        const offset = first ? 5 : 1;
 
-        if (i === 1) {
-            new DataView(idatContent.buffer).setUint32(i, data.byteLength);
-            i += 4;
-            idatContent.set(data.subarray(j, j += bytePerWidth - i), i);
-            i += bytePerWidth - i;
-        } else {
-            idatContent.set(data.subarray(j, j += bytePerWidth), i);
-            i += bytePerWidth;
+        if (first) {
+            new DataView(idatContent.buffer).setUint32(i + 1, data.byteLength);
         }
+
+        idatContent.set([FILTER_TYPE], i);
+        idatContent.set(data.subarray(j, j += bytePerWidth - offset), i + offset);
     }
 
     const idatContentCompressed = await encompress(idatContent, "deflate");
