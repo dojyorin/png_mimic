@@ -44,9 +44,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("Invalid IHDR chunk.");
     }
 
-    const chunks = [];
-
-    for (let i = MAGIC.byteLength + IHDR.byteLength; i < png.byteLength - IEND.byteLength;) {
+    for (let i = MAGIC.byteLength + ihdr.byteLength; i < png.byteLength - IEND.byteLength;) {
         const view = new DataView(png.buffer);
 
         const size = view.getUint32(i);
@@ -61,47 +59,9 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         if (crc32(name, body) !== checksum) {
             throw new Error("Checksum mismatch.");
         }
-
-        chunks.push({
-            name: dec.decode(name),
-            body: body,
-            crc32: checksum
-        });
     }
 
-    const chunkIDAT = chunks.find(({name}) => name === "IDAT")?.body;
-
-    const chunkViewIHDR = new DataView(chunkIHDR.buffer);
-
-    if (chunkViewIHDR.getUint8(8) !== COLOR_DEPTH || chunkViewIHDR.getUint8(9) !== COLOR_TYPE) {
-        throw new Error("Invalid color format.");
-    }
-
-    const nbytePerLine = chunkViewIHDR.getUint32(0) * BYTE_PER_PIXEL;
-    const image = await uncompress(chunkIDAT, "deflate");
-
-    const rows = Array.from({
-        *[Symbol.iterator]() {
-            for (let i = 0; i < image.byteLength; i++) {
-                if (image[i] !== FILTER_TYPE) {
-                    throw new Error("Invalid color filter.");
-                }
-
-                yield image.slice(i, i += nbytePerLine);
-            }
-        }
-    });
-
-    let pos = 0;
-    const rawimage = byteJoin(...rows);
-    const rawimageview = new DataView(rawimage.buffer);
-    const nsize = rawimageview.getUint32(pos);
-    pos += Uint32Array.BYTES_PER_ELEMENT;
-
-    const bsize = rawimageview.getUint32(pos);
-    pos += Uint32Array.BYTES_PER_ELEMENT;
-
-    const data = rawimage.slice(pos, pos += bsize);
+    const data = new Uint8Array();
 
     return data;
 }
