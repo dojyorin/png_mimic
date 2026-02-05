@@ -3,10 +3,21 @@ import {encompress, uncompress} from "./utility/compress.ts";
 import {crc32} from "./utility/crc32.ts";
 
 const BYTE_PER_PIXEL = 3;
-const COLOR_DEPTH = 8;
-const COLOR_TYPE = 2;
 const FILTER_TYPE = 0;
-const MAGIC_CODE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] as const;
+const MAGIC = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+const IHDR = new Uint8Array([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0xB4, 0xE9, 0xEB, 0x45]);
+const IEND = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
+
+function generateIHDR(height: number, width: number) {
+    const buf = IHDR.slice();
+    const view = new DataView(buf.buffer);
+
+    view.setUint32(8, width);
+    view.setUint32(12, height);
+    view.setInt32(-4, crc32(buf.subarray(4, -4)));
+
+    return buf;
+}
 
 /**
  * Extract binary from png image.
@@ -125,22 +136,19 @@ function createChunk(name: string, body: Uint8Array) {
  * ```
  */
 export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-    const name_ = enc.encode(name);
-    const imageWidth = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT * 2 + name_.byteLength + body.byteLength) / BYTE_PER_PIXEL));
-    const frameSize = imageWidth ** 2 * BYTE_PER_PIXEL;
-    const nbytePerLine = imageWidth * BYTE_PER_PIXEL;
+    const imageWidth = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT + data.byteLength) / BYTE_PER_PIXEL));
+    const maxByteLength = imageWidth ** 2 * BYTE_PER_PIXEL;
+    const maxByteLengthPerRow = imageWidth * BYTE_PER_PIXEL;
 
-    const viewx = new DataView(new ArrayBuffer(Uint32Array.BYTES_PER_ELEMENT * 2));
-    viewx.setUint32(0, name_.byteLength);
-    viewx.setUint32(Uint32Array.BYTES_PER_ELEMENT, body.byteLength);
+    const png = new Uint8Array(MAGIC_CODE.length + IHDR_SIZE + (imageWidth ** 2 * BYTE_PER_PIXEL + imageWidth) + IEND_SIZE);
 
-    const bodyx = byteJoin(new Uint8Array(viewx.buffer), name_, body);
+    const bodyx = byteJoin(new Uint8Array(new Uint32Array([data.byteLength]).buffer), data);
 
     const rows = Array.from({
         *[Symbol.iterator]() {
-            for (let i = 0; i < frameSize; undefined) {
-                const row = bodyx.slice(i, i += nbytePerLine);
-                yield byteJoin(new Uint8Array([FILTER_TYPE]), row, new Uint8Array(nbytePerLine - row.byteLength));
+            for (let i = 0; i < maxByteLength; undefined) {
+                const row = bodyx.slice(i, i += maxByteLengthPerRow);
+                yield byteJoin(new Uint8Array([FILTER_TYPE]), row, new Uint8Array(maxByteLengthPerRow - row.byteLength));
             }
         }
     });
