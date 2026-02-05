@@ -7,33 +7,6 @@ const MAGIC = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
 const IHDR = new Uint8Array([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0xB4, 0xE9, 0xEB, 0x45]);
 const IEND = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
 
-function generateIHDR(height: number, width: number) {
-    const buf = IHDR.slice();
-    const view = new DataView(buf.buffer);
-
-    view.setUint32(8, width);
-    view.setUint32(12, height);
-    view.setInt32(-4, crc32(buf.subarray(4, -4)));
-
-    return buf;
-}
-
-function getUint32(buf: Uint8Array<ArrayBuffer>, offset: number) {
-    return new DataView(buf.buffer).getUint32(offset);
-}
-
-function setUint32(buf: Uint8Array<ArrayBuffer>, offset: number, n: number) {
-    new DataView(buf.buffer).setUint32(offset, n);
-}
-
-function getInt32(buf: Uint8Array<ArrayBuffer>, offset: number) {
-    return new DataView(buf.buffer).getInt32(offset);
-}
-
-function setInt32(buf: Uint8Array<ArrayBuffer>, offset: number, n: number) {
-    new DataView(buf.buffer).setInt32(offset, n);
-}
-
 /**
  * Extract binary from png image.
  * Input format is 24 bits RGB, no alpha, no filter.
@@ -45,14 +18,12 @@ function setInt32(buf: Uint8Array<ArrayBuffer>, offset: number, n: number) {
  * ```
  */
 export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-    const dec = new TextDecoder();
+    if (png.subarray(0, MAGIC.byteLength).toHex() !== MAGIC.toHex()) {
+        throw new Error("Invalid magic.");
+    }
 
-    for (let i = 0; i < MAGIC_CODE.length; i++) {
-        if (png[i] !== MAGIC_CODE[i]) {
-            throw new Error("Invalid magic.");
-        }
-
-        continue;
+    if (png.subarray(-IEND.byteLength).toHex() !== IEND.toHex()) {
+        throw new Error("Invalid IEND chunk.");
     }
 
     const chunks = [];
@@ -139,21 +110,29 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
  */
 export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
     const width = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT + data.byteLength) / BYTE_PER_PIXEL));
+
+    const ihdr = IHDR.slice();
+    new DataView(ihdr.buffer).setUint32(8, width);
+    new DataView(ihdr.buffer).setUint32(12, width);
+    new DataView(ihdr.buffer).setInt32(-4, crc32(ihdr.subarray(4, -4)));
+
     const maxByteLength = width ** 2 * BYTE_PER_PIXEL;
     const maxByteLengthPerRow = width * BYTE_PER_PIXEL;
-
-    const png = new Uint8Array(MAGIC.byteLength + IHDR.byteLength + (Uint32Array.BYTES_PER_ELEMENT * 3 + width ** 2 * BYTE_PER_PIXEL + width) + IEND.byteLength);
-    png.set(MAGIC, 0);
-    png.set(generateIHDR(width, width), MAGIC.byteLength);
-    png.set();
-    png.set();
-    png.set(IEND, -IEND.byteLength);
-
-    const bodyx = byteJoin(new Uint8Array(new Uint32Array([data.byteLength]).buffer), data);
 
     for (let i = MAGIC.byteLength + IHDR.byteLength; i < maxByteLength;) {
 
     }
 
-    return png;
+    return;
+}
+
+function generateIHDR(height: number, width: number) {
+    const buf = IHDR.slice();
+    const view = new DataView(buf.buffer);
+
+    view.setUint32(8, width);
+    view.setUint32(12, height);
+    view.setInt32(-4, crc32(buf.subarray(4, -4)));
+
+    return buf;
 }
