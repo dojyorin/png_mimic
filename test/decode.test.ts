@@ -1,14 +1,16 @@
-import {assertEquals} from "../deps.test.ts";
-import {pngDecode} from "../src/decode.ts";
+import {assertEquals} from "@std/assert";
+import {decode} from "../src/png.ts";
 
-const sample1 = await Deno.readFile(new URL(import.meta.resolve("./asset/sample.bin")));
-const sample2 = await Deno.readFile(new URL(import.meta.resolve("./asset/sample.png")));
+const [bin, png] = await Promise.all([
+    Deno.readFile(new URL(import.meta.resolve("./assets/sample.bin"))),
+    Deno.readFile(new URL(import.meta.resolve("./assets/sample.png")))
+]);
 
 Deno.test({
     name: "Decode",
     async fn() {
-        const decode = await pngDecode(sample2);
+        const output = await decode(png);
 
-        assertEquals(decode.body, sample1);
+        assertEquals(output, bin);
     }
 });

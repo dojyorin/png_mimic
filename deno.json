@@ -4,7 +4,9 @@
     "version": "1.0.0",
     "lock": false,
     "unstable": [],
-    "imports": {},
+    "imports": {
+        "@std/assert": "jsr:@std/assert@1.0.18"
+    },
     "exports": {
         ".": "./src/mod.ts"
     },
