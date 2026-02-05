@@ -116,14 +116,21 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     new DataView(ihdr.buffer).setUint32(12, width);
     new DataView(ihdr.buffer).setInt32(-4, crc32(ihdr.subarray(4, -4)));
 
-    const maxByteLength = width ** 2 * BYTE_PER_PIXEL;
-    const maxByteLengthPerRow = width * BYTE_PER_PIXEL;
-
     for (let i = MAGIC.byteLength + IHDR.byteLength; i < maxByteLength;) {
 
     }
 
-    return;
+    const deflate = new Uint8Array();
+
+    const idat = new Uint8Array(Uint32Array.BYTES_PER_ELEMENT * 3 + deflate.byteLength);
+    new DataView(idat.buffer).setUint32(0, deflate.byteLength);
+    idat.set([0x49, 0x44, 0x41, 0x54], 4);
+    idat.set(deflate, 8);
+    new DataView(idat.buffer).setInt32(-4, crc32(idat.subarray(4, -4)));
+
+    const png = new Uint8Array();
+
+    return png;
 }
 
 function generateIHDR(height: number, width: number) {
