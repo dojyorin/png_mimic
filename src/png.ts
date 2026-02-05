@@ -9,7 +9,7 @@ const IEND = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xA
 
 /**
  * Extract binary from png image.
- * Input format is 24 bits RGB, no alpha, no filter.
+ * Input format is 24 bits RGB.
  * @example
  * ```ts
  * const bin = await Deno.readFile("./file");
@@ -100,7 +100,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
 /**
  * Generate png image from binary.
- * Output format is 24 bits RGB, no alpha, no filter.
+ * Output format is 24 bits RGB.
  * @example
  * ```ts
  * const bin = await Deno.readFile("./file");
