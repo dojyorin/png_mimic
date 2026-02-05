@@ -64,7 +64,16 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("IDAT chunk CRC do not match.");
     }
 
+    const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
     const idatContent = await uncompress(png.subarray(idatStartIndex + 8, idatEndIndex));
+
+    for (let i = 0; i < idatContent.byteLength;) {
+        if (idatContent[i++] !== FILTER_TYPE) {
+            throw new Error("Invalid filter type.");
+        }
+
+        idatContent.subarray(i, i += bytePerWidth);
+    }
 
     const data = new Uint8Array(new DataView(idatContent.buffer).getUint32(1));
 
