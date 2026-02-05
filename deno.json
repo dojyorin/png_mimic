@@ -8,12 +8,12 @@
     "exports": {
         ".": "./src/mod.ts"
     },
-    "tasks": {
-        "test": "deno test -R --clean --parallel"
-    },
     "test": {
         "include": [
-            "./test"
+            "./test/"
         ]
+    },
+    "tasks": {
+        "test": "deno test -R --clean --parallel"
     }
 }
