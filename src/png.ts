@@ -66,7 +66,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
     const idatContent = await uncompress(png.subarray(idatStartIndex + 8, idatEndIndex));
 
-    const data = new Uint8Array();
+    const data = new Uint8Array(new DataView(idatContent.buffer).getUint32(1));
 
     return data;
 }
