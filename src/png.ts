@@ -58,8 +58,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         i += Uint32Array.BYTES_PER_ELEMENT * 3 + pngView.getUint32(i);
     }
 
-    const idatLength = pngView.getUint32(idatStartIndex);
-    const idatEndIndex = idatStartIndex + Uint32Array.BYTES_PER_ELEMENT * 2 + idatLength;
+    const idatEndIndex = idatStartIndex + Uint32Array.BYTES_PER_ELEMENT * 2 + pngView.getUint32(idatStartIndex);
 
     if (pngView.getInt32(idatEndIndex) !== crc32(png.subarray(idatStartIndex + 4, idatEndIndex))) {
         throw new Error("IDAT chunk CRC do not match.");
