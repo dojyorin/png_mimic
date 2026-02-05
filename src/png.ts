@@ -65,6 +65,8 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("IDAT chunk CRC do not match.");
     }
 
+    const idatContent = await uncompress(png.subarray(idatStartIndex + 8, idatEndIndex));
+
     const data = new Uint8Array();
 
     return data;
