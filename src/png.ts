@@ -73,19 +73,18 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
     const data = new Uint8Array(isWidthOnePixel ? (((idatContentView.getUint32(1) >>> 8) << 8) | idatContentView.getUint8(6)) >>> 0 : idatContentView.getUint32(1));
 
-    for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
+    for (let i = 0, j = 0; j < data.byteLength; i += bytePerWidth) {
         if (idatContentView.getUint8(i) !== 0x00) {
             throw new Error("Invalid filter type.");
         }
 
-        const first = i === 0;
-        const offset = first ? 5 : 1;
-
-        if (first && isWidthOnePixel) {
+        if (!i && isWidthOnePixel) {
             continue;
         }
 
-        data.set(idatContent.subarray(i + 1 , i += bytePerWidth), j);
+        const offset = i === bytePerWidth && isWidthOnePixel ? 2 : !i ? 5 : 1;
+
+        data.set(idatContent.subarray(i + offset , i + bytePerWidth), j);
     }
 
     return data;
@@ -116,12 +115,11 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const idatContent = new Uint8Array(bytePerWidth * height);
 
     for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
-        const first = i === 0;
-        const offset = first ? 5 : 1;
-
-        if (first) {
+        if (!i) {
             new DataView(idatContent.buffer).setUint32(1, data.byteLength);
         }
+
+        const offset = !i ? 5 : 1;
 
         idatContent.set([0x00], i);
         idatContent.set(data.subarray(j, j += bytePerWidth - offset), i + offset);
