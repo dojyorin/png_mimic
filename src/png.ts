@@ -63,24 +63,17 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
     const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
     const idatContent = await uncompress(idatContentCompressed, "deflate");
+    const idatContentView = new DataView(idatContent.buffer);
 
-    let dataLength = 0;
+    const data = new Uint8Array(width === 1 ? (((idatContentView.getUint32(1) >>> 8) << 8) | idatContentView.getUint8(6)) >>> 0 : idatContentView.getUint32(1));
 
-    for (let i = 0; i < idatContent.byteLength;) {
-        if (idatContent[i] !== 0x00) {
+    for (let i = 0, j = 0; i < idatContent.byteLength;) {
+        if (idatContentView.getUint8(i) !== 0x00) {
             throw new Error("Invalid filter type.");
-        }
-
-        const first = i === 0;
-
-        if (first && width > 1) {
-            dataLength = new DataView(idatContent.buffer).getUint32(1);
         }
 
         idatContent.subarray(i + 1 , i += bytePerWidth);
     }
-
-    const data = new Uint8Array(dataLength);
 
     return data;
 }
