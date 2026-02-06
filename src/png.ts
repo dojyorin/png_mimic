@@ -63,11 +63,11 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const idatContent = await uncompress(png.subarray(idatStartByte + 8, idatEndByte - 4), "deflate");
 
     for (let i = 0; i < idatContent.byteLength;) {
-        if (idatContent[i++] !== 0x00) {
+        if (idatContent[i] !== 0x00) {
             throw new Error("Invalid filter type.");
         }
 
-        idatContent.subarray(i, i += bytePerWidth);
+        idatContent.subarray(i, i += bytePerWidth - 1);
     }
 
     const data = new Uint8Array(new DataView(idatContent.buffer).getUint32(1));
