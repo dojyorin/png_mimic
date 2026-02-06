@@ -1,6 +1,7 @@
 const BYTE_PER_PIXEL = 3;
 const MAGIC_HEX = "89504E470D0A1A0A";
 const MAGIC_LENGTH = 8;
+const IHDR_LENGTH = 25;
 const IEND_HEX = "0000000049454E44AE426082";
 const IEND_LENGTH = 12;
 
@@ -46,18 +47,18 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
     const isWidthOnePixel = width === 1;
 
-    const ihdrLength = pngView.getUint32(MAGIC_LENGTH);
-    const ihdrType = pngView.getUint32(MAGIC_LENGTH + 4);
-    const ihdrContent1 = pngView.getUint32(MAGIC_LENGTH + 16);
-    const ihdrContent2 = pngView.getUint8(MAGIC_LENGTH + 20);
-    const ihdrCRC = pngView.getInt32(MAGIC_LENGTH + 21);
-
-    if (ihdrLength !== 0x0000000D || ihdrType !== 0x49484452 || ihdrContent1 !== 0x08020000 || ihdrContent2 !== 0x00 || ihdrCRC !== crc32(png.subarray(MAGIC_LENGTH + 4, MAGIC_LENGTH + 21))) {
+    if (
+        pngView.getUint32(MAGIC_LENGTH) !== 0x0000000D ||
+        pngView.getUint32(MAGIC_LENGTH + 4) !== 0x49484452 ||
+        pngView.getUint32(MAGIC_LENGTH + 16) !== 0x08020000 ||
+        pngView.getUint8(MAGIC_LENGTH + 20) !== 0x00 ||
+        pngView.getInt32(MAGIC_LENGTH + 21) !== crc32(png.subarray(MAGIC_LENGTH + 4, MAGIC_LENGTH + 21))
+    ) {
         throw new Error("Invalid IHDR chunk.");
     }
 
     const idatStartByte = (() => {
-        for (let i = MAGIC_LENGTH; i < png.byteLength;) {
+        for (let i = MAGIC_LENGTH + IHDR_LENGTH; i < (png.byteLength - IEND_LENGTH);) {
             if (pngView.getUint32(i + 4) === 0x49444154) {
                 return i;
             }
@@ -122,12 +123,6 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const width = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT + data.byteLength) / BYTE_PER_PIXEL));
     const height = width;
 
-    const ihdr = new Uint8Array([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0xB4, 0xE9, 0xEB, 0x45]);
-    const ihdrView = new DataView(ihdr.buffer);
-    ihdrView.setUint32(8, width);
-    ihdrView.setUint32(12, height);
-    ihdrView.setInt32(ihdr.byteLength - 4, crc32(ihdr.subarray(4, -4)));
-
     const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
     const idatContent = new Uint8Array(bytePerWidth * height);
 
@@ -144,18 +139,24 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
 
     const idatContentCompressed = await new Response(new Response(idatContent).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
 
-    const idat = new Uint8Array(Uint32Array.BYTES_PER_ELEMENT * 3 + idatContentCompressed.byteLength);
-    const idatView = new DataView(idat.buffer);
-    idatView.setUint32(0, idatContentCompressed.byteLength);
-    idat.set([0x49, 0x44, 0x41, 0x54], 4);
-    idat.set(idatContentCompressed, 8);
-    idatView.setInt32(idat.byteLength - 4, crc32(idat.subarray(4, -4)));
+    const idatLength = Uint32Array.BYTES_PER_ELEMENT * 3 + idatContentCompressed.byteLength;
 
-    const png = new Uint8Array(MAGIC_LENGTH + ihdr.byteLength + idat.byteLength + IEND_LENGTH);
+    const png = new Uint8Array(MAGIC_LENGTH + IHDR_LENGTH + idatLength + IEND_LENGTH);
+    const pngView = new DataView(png.buffer);
+
     png.set(Uint8Array.fromHex(MAGIC_HEX), 0);
-    png.set(ihdr, MAGIC_LENGTH);
-    png.set(idat, MAGIC_LENGTH + ihdr.byteLength);
-    png.set(Uint8Array.fromHex(IEND_HEX), MAGIC_LENGTH + ihdr.byteLength + idat.byteLength);
+
+    png.set([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], MAGIC_LENGTH);
+    pngView.setUint32(MAGIC_LENGTH + 8, width);
+    pngView.setUint32(MAGIC_LENGTH + 12, height);
+    pngView.setInt32(MAGIC_LENGTH + 21, crc32(png.subarray(MAGIC_LENGTH + 4, MAGIC_LENGTH + 21)));
+
+    pngView.setUint32(MAGIC_LENGTH + IHDR_LENGTH, idatContentCompressed.byteLength);
+    png.set([0x49, 0x44, 0x41, 0x54], MAGIC_LENGTH + IHDR_LENGTH + 4);
+    png.set(idatContentCompressed, MAGIC_LENGTH + IHDR_LENGTH + 8);
+    pngView.setInt32(MAGIC_LENGTH + IHDR_LENGTH + idatLength - 4, crc32(png.subarray(MAGIC_LENGTH + IHDR_LENGTH + 4, MAGIC_LENGTH + IHDR_LENGTH + idatLength - 4)));
+
+    png.set(Uint8Array.fromHex(IEND_HEX), MAGIC_LENGTH + IHDR_LENGTH + idatLength);
 
     return png;
 }
