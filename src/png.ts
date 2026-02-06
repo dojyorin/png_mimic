@@ -83,8 +83,16 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         }
 
         const offset = i === bytePerWidth && isWidthOnePixel ? 2 : !i ? 5 : 1;
+        const segment = idatContent.subarray(i + offset , i + bytePerWidth);
 
-        data.set(idatContent.subarray(i + offset , i + bytePerWidth), j);
+        if (j + segment.byteLength > data.byteLength) {
+            data.set(segment.subarray(0, data.byteLength - j), j);
+
+            break;
+        }
+
+        data.set(segment, j);
+        j += segment.byteLength;
     }
 
     return data;
