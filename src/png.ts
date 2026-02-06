@@ -1,5 +1,5 @@
 import {encompress, uncompress} from "./utility/compress.ts";
-import {crc32} from "./utility/crc32.ts";
+import {crc32} from "./utility/crc.ts";
 
 const BYTE_PER_PIXEL = 3;
 const MAGIC_HEX = "89504E470D0A1A0A";
