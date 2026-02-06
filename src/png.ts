@@ -67,7 +67,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
             throw new Error("Invalid filter type.");
         }
 
-        idatContent.subarray(i, i += bytePerWidth - 1);
+        idatContent.subarray(i + 1 , i += bytePerWidth);
     }
 
     const data = new Uint8Array(new DataView(idatContent.buffer).getUint32(1));
