@@ -60,7 +60,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     }
 
     const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
-    const idatContent = await uncompress(png.subarray(idatStartIndex + 8, idatEndIndex));
+    const idatContent = await uncompress(png.subarray(idatStartIndex + 8, idatEndIndex), "deflate");
 
     for (let i = 0; i < idatContent.byteLength;) {
         if (idatContent[i++] !== 0x00) {
