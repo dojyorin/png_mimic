@@ -1,11 +1,20 @@
-import {encompress, uncompress} from "./utility/compress.ts";
-import {crc32} from "./utility/crc.ts";
-
 const BYTE_PER_PIXEL = 3;
 const MAGIC_HEX = "89504E470D0A1A0A";
 const MAGIC_LENGTH = 8;
 const IEND_HEX = "0000000049454E44AE426082";
 const IEND_LENGTH = 12;
+
+function crc32(data: Uint8Array) {
+    let hash = 0xFFFFFFFF;
+
+    for (const n of data) {
+        for (let i = 0; i < 8; i++) {
+            hash = ((hash ^ n >>> i) & 1 ? 0xEDB88320 : 0) ^ hash >>> 1;
+        }
+    }
+
+    return hash ^ 0xFFFFFFFF;
+}
 
 /**
  * Extract binary from png image.
@@ -68,7 +77,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const idatContentCompressed = png.subarray(idatStartByte + 8, idatEndByte - 4);
 
     const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
-    const idatContent = await uncompress(idatContentCompressed, "deflate");
+    const idatContent = await new Response(new Response(idatContentCompressed).body?.pipeThrough(new DecompressionStream("deflate"))).bytes();
     const idatContentView = new DataView(idatContent.buffer);
 
     const data = new Uint8Array(isWidthOnePixel ? (((idatContentView.getUint32(1) >>> 8) << 8) | idatContentView.getUint8(6)) >>> 0 : idatContentView.getUint32(1));
@@ -133,7 +142,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
         idatContent.set(data.subarray(j, j += bytePerWidth - offset), i + offset);
     }
 
-    const idatContentCompressed = await encompress(idatContent, "deflate");
+    const idatContentCompressed = await new Response(new Response(idatContent).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
 
     const idat = new Uint8Array(Uint32Array.BYTES_PER_ELEMENT * 3 + idatContentCompressed.byteLength);
     const idatView = new DataView(idat.buffer);
