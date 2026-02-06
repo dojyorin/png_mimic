@@ -29,7 +29,13 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const pngView = new DataView(png.buffer);
 
     const width = pngView.getUint32(MAGIC_LENGTH + 8);
-    // const height = pngView.getUint32(MAGIC_LENGTH + 12);
+    const height = pngView.getUint32(MAGIC_LENGTH + 12);
+
+    if (width * height < 2) {
+        throw new Error("Must be least 2 pixels.");
+    }
+
+    const isWidthOnePixel = width === 1;
 
     const ihdrLength = pngView.getUint32(MAGIC_LENGTH);
     const ihdrType = pngView.getUint32(MAGIC_LENGTH + 4);
@@ -65,11 +71,18 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const idatContent = await uncompress(idatContentCompressed, "deflate");
     const idatContentView = new DataView(idatContent.buffer);
 
-    const data = new Uint8Array(width === 1 ? (((idatContentView.getUint32(1) >>> 8) << 8) | idatContentView.getUint8(6)) >>> 0 : idatContentView.getUint32(1));
+    const data = new Uint8Array(isWidthOnePixel ? (((idatContentView.getUint32(1) >>> 8) << 8) | idatContentView.getUint8(6)) >>> 0 : idatContentView.getUint32(1));
 
-    for (let i = 0, j = 0; i < idatContent.byteLength;) {
+    for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
         if (idatContentView.getUint8(i) !== 0x00) {
             throw new Error("Invalid filter type.");
+        }
+
+        const first = i === 0;
+        const offset = first ? 5 : 1;
+
+        if (first && isWidthOnePixel) {
+            continue;
         }
 
         data.set(idatContent.subarray(i + 1 , i += bytePerWidth), j);
@@ -81,6 +94,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 /**
  * Generate png image from binary.
  * Output format is 24 bits RGB.
+ * Output image is square.
  * @example
  * ```ts
  * const bin = await Deno.readFile("./file");
