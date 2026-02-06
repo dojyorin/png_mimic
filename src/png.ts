@@ -47,22 +47,22 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("Invalid IHDR chunk.");
     }
 
-    let idatStartByte = 0;
+    const idatStartByte = (() => {
+        for (let i = MAGIC_LENGTH; i < png.byteLength;) {
+            if (pngView.getUint32(i + 4) === 0x49444154) {
+                return i;
+            }
 
-    for (let i = MAGIC_LENGTH; i < png.byteLength;) {
-        if (pngView.getUint32(i + 4) === 0x49444154) {
-            idatStartByte = i;
-
-            break;
+            i += Uint32Array.BYTES_PER_ELEMENT * 3 + pngView.getUint32(i);
         }
 
-        i += Uint32Array.BYTES_PER_ELEMENT * 3 + pngView.getUint32(i);
-    }
+        throw new Error("IDAT chunk not found.");
+    })();
 
     const idatEndByte = idatStartByte + Uint32Array.BYTES_PER_ELEMENT * 3 + pngView.getUint32(idatStartByte);
 
     if (pngView.getInt32(idatEndByte - 4) !== crc32(png.subarray(idatStartByte + 4, idatEndByte - 4))) {
-        throw new Error("IDAT chunk CRC do not match.");
+        throw new Error("IDAT chunk CRC not match.");
     }
 
     const idatContentCompressed = png.subarray(idatStartByte + 8, idatEndByte - 4);
