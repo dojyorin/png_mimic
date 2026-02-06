@@ -64,15 +64,23 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
     const idatContent = await uncompress(idatContentCompressed, "deflate");
 
+    let dataLength = 0;
+
     for (let i = 0; i < idatContent.byteLength;) {
         if (idatContent[i] !== 0x00) {
             throw new Error("Invalid filter type.");
         }
 
+        const first = i === 0;
+
+        if (first && width > 1) {
+            dataLength = new DataView(idatContent.buffer).getUint32(1);
+        }
+
         idatContent.subarray(i + 1 , i += bytePerWidth);
     }
 
-    const data = new Uint8Array(new DataView(idatContent.buffer).getUint32(1));
+    const data = new Uint8Array(dataLength);
 
     return data;
 }
@@ -105,7 +113,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
         const offset = first ? 5 : 1;
 
         if (first) {
-            new DataView(idatContent.buffer).setUint32(i + 1, data.byteLength);
+            new DataView(idatContent.buffer).setUint32(1, data.byteLength);
         }
 
         idatContent.set([0x00], i);
