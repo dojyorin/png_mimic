@@ -6,20 +6,14 @@ const [bin, png] = await Promise.all([
     Deno.readFile(new URL(import.meta.resolve("./assets/sample.png")))
 ]);
 
-Deno.test({
-    name: "Encode",
-    async fn() {
-        const output = await encode(bin);
+Deno.test("Encode", async () => {
+    const output = await encode(bin);
 
-        assertEquals(output, png);
-    }
+    assertEquals(output, png);
 });
 
-Deno.test({
-    name: "Decode",
-    async fn() {
-        const output = await decode(png);
+Deno.test("Decode", async () => {
+    const output = await decode(png);
 
-        assertEquals(output, bin);
-    }
+    assertEquals(output, bin);
 });
