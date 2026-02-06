@@ -1,7 +1,7 @@
 {
     "name": "png_mimic",
     "license": "MIT",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "lock": false,
     "unstable": [],
     "imports": {
@@ -16,6 +16,6 @@
         ]
     },
     "tasks": {
-        "test": "deno test -R --clean --parallel"
+        "test": "deno test -Rr --clean --parallel"
     }
 }
