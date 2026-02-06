@@ -41,11 +41,11 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("Invalid IHDR chunk.");
     }
 
-    let idatStartIndex = 0;
+    let idatStartByte = 0;
 
     for (let i = MAGIC_LENGTH; i < png.byteLength;) {
         if (pngView.getUint32(i + 4) === 0x49444154) {
-            idatStartIndex = i;
+            idatStartByte = i;
 
             break;
         }
@@ -53,14 +53,14 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         i += Uint32Array.BYTES_PER_ELEMENT * 3 + pngView.getUint32(i);
     }
 
-    const idatEndIndex = idatStartIndex + Uint32Array.BYTES_PER_ELEMENT * 2 + pngView.getUint32(idatStartIndex);
+    const idatEndByte = idatStartByte + Uint32Array.BYTES_PER_ELEMENT * 3 + pngView.getUint32(idatStartByte);
 
-    if (pngView.getInt32(idatEndIndex) !== crc32(png.subarray(idatStartIndex + 4, idatEndIndex))) {
+    if (pngView.getInt32(idatEndByte - 4) !== crc32(png.subarray(idatStartByte + 4, idatEndByte - 4))) {
         throw new Error("IDAT chunk CRC do not match.");
     }
 
     const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
-    const idatContent = await uncompress(png.subarray(idatStartIndex + 8, idatEndIndex), "deflate");
+    const idatContent = await uncompress(png.subarray(idatStartByte + 8, idatEndByte - 4), "deflate");
 
     for (let i = 0; i < idatContent.byteLength;) {
         if (idatContent[i++] !== 0x00) {
