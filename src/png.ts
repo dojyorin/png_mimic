@@ -3,8 +3,10 @@ import {crc32} from "./utility/crc32.ts";
 
 const BYTE_PER_PIXEL = 3;
 const FILTER_TYPE = 0;
-const MAGIC = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-const IEND = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
+const MAGIC_HEX = "89504E470D0A1A0A";
+const MAGIC_LENGTH = 8;
+const IEND_HEX = "0000000049454E44AE426082";
+const IEND_LENGTH = 12;
 
 function generateIHDR(width: number, height: number) {
     const ihdr = new Uint8Array([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0xB4, 0xE9, 0xEB, 0x45]);
@@ -27,28 +29,28 @@ function generateIHDR(width: number, height: number) {
  * ```
  */
 export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-    if (png.subarray(0, MAGIC.byteLength).toHex() !== MAGIC.toHex()) {
+    if (png.subarray(0, MAGIC_LENGTH).toHex().toUpperCase() !== MAGIC_HEX) {
         throw new Error("Invalid magic.");
     }
 
-    if (png.subarray(-IEND.byteLength).toHex() !== IEND.toHex()) {
+    if (png.subarray(-IEND_LENGTH).toHex().toUpperCase() !== IEND_HEX) {
         throw new Error("Invalid IEND chunk.");
     }
 
     const pngView = new DataView(png.buffer);
 
-    const width = pngView.getUint32(MAGIC.byteLength + 8);
-    const height = pngView.getUint32(MAGIC.byteLength + 12);
+    const width = pngView.getUint32(MAGIC_LENGTH + 8);
+    const height = pngView.getUint32(MAGIC_LENGTH + 12);
 
     const ihdr = generateIHDR(width, height);
 
-    if (png.subarray(MAGIC.byteLength, MAGIC.byteLength + ihdr.byteLength).toHex() !== ihdr.toHex()) {
+    if (png.subarray(MAGIC_LENGTH, MAGIC_LENGTH + ihdr.byteLength).toHex() !== ihdr.toHex()) {
         throw new Error("Invalid IHDR chunk.");
     }
 
     let idatStartIndex = 0;
 
-    for (let i = MAGIC.byteLength; i < png.byteLength;) {
+    for (let i = MAGIC_LENGTH; i < png.byteLength;) {
         if (png.subarray(i + 4, i + 8).toHex() === "49444154") {
             idatStartIndex = i;
 
@@ -120,11 +122,11 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     idat.set(idatContentCompressed, 8);
     idatView.setInt32(idat.byteLength - 4, crc32(idat.subarray(4, -4)));
 
-    const png = new Uint8Array(MAGIC.byteLength + ihdr.byteLength + idat.byteLength + IEND.byteLength);
-    png.set(MAGIC, 0);
-    png.set(ihdr, MAGIC.byteLength);
-    png.set(idat, MAGIC.byteLength + ihdr.byteLength);
-    png.set(IEND, MAGIC.byteLength + ihdr.byteLength + idat.byteLength);
+    const png = new Uint8Array(MAGIC_LENGTH + ihdr.byteLength + idat.byteLength + IEND_LENGTH);
+    png.set(Uint8Array.fromHex(MAGIC_HEX), 0);
+    png.set(ihdr, MAGIC_LENGTH);
+    png.set(idat, MAGIC_LENGTH + ihdr.byteLength);
+    png.set(Uint8Array.fromHex(IEND_HEX), MAGIC_LENGTH + ihdr.byteLength + idat.byteLength);
 
     return png;
 }
