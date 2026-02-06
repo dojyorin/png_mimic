@@ -2,21 +2,10 @@ import {encompress, uncompress} from "./utility/compress.ts";
 import {crc32} from "./utility/crc32.ts";
 
 const BYTE_PER_PIXEL = 3;
-const FILTER_TYPE = 0;
 const MAGIC_HEX = "89504E470D0A1A0A";
 const MAGIC_LENGTH = 8;
 const IEND_HEX = "0000000049454E44AE426082";
 const IEND_LENGTH = 12;
-
-function generateIHDR(width: number, height: number) {
-    const ihdr = new Uint8Array([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0xB4, 0xE9, 0xEB, 0x45]);
-    const ihdrView = new DataView(ihdr.buffer);
-    ihdrView.setUint32(8, width);
-    ihdrView.setUint32(12, height);
-    ihdrView.setInt32(ihdr.byteLength - 4, crc32(ihdr.subarray(4, -4)));
-
-    return ihdr;
-}
 
 /**
  * Extract binary from png image.
@@ -40,18 +29,22 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const pngView = new DataView(png.buffer);
 
     const width = pngView.getUint32(MAGIC_LENGTH + 8);
-    const height = pngView.getUint32(MAGIC_LENGTH + 12);
+    // const height = pngView.getUint32(MAGIC_LENGTH + 12);
 
-    const ihdr = generateIHDR(width, height);
+    const ihdrLength = pngView.getUint32(MAGIC_LENGTH);
+    const ihdrType = pngView.getUint32(MAGIC_LENGTH + 4);
+    const ihdrContent1 = pngView.getUint32(MAGIC_LENGTH + 16);
+    const ihdrContent2 = pngView.getUint8(MAGIC_LENGTH + 20);
+    const ihdrCRC = pngView.getInt32(MAGIC_LENGTH + 21);
 
-    if (png.subarray(MAGIC_LENGTH, MAGIC_LENGTH + ihdr.byteLength).toHex() !== ihdr.toHex()) {
+    if (ihdrLength !== 0x0000000D || ihdrType !== 0x49484452 || ihdrContent1 !== 0x08020000 || ihdrContent2 !== 0x00 || ihdrCRC !== crc32(png.subarray(MAGIC_LENGTH + 4, MAGIC_LENGTH + 21))) {
         throw new Error("Invalid IHDR chunk.");
     }
 
     let idatStartIndex = 0;
 
     for (let i = MAGIC_LENGTH; i < png.byteLength;) {
-        if (png.subarray(i + 4, i + 8).toHex() === "49444154") {
+        if (pngView.getUint32(i + 4) === 0x49444154) {
             idatStartIndex = i;
 
             break;
@@ -70,7 +63,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const idatContent = await uncompress(png.subarray(idatStartIndex + 8, idatEndIndex));
 
     for (let i = 0; i < idatContent.byteLength;) {
-        if (idatContent[i++] !== FILTER_TYPE) {
+        if (idatContent[i++] !== 0x00) {
             throw new Error("Invalid filter type.");
         }
 
@@ -96,7 +89,11 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const width = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT + data.byteLength) / BYTE_PER_PIXEL));
     const height = width;
 
-    const ihdr = generateIHDR(width, height);
+    const ihdr = new Uint8Array([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0xB4, 0xE9, 0xEB, 0x45]);
+    const ihdrView = new DataView(ihdr.buffer);
+    ihdrView.setUint32(8, width);
+    ihdrView.setUint32(12, height);
+    ihdrView.setInt32(ihdr.byteLength - 4, crc32(ihdr.subarray(4, -4)));
 
     const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
     const idatContent = new Uint8Array(bytePerWidth * height);
@@ -109,7 +106,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
             new DataView(idatContent.buffer).setUint32(i + 1, data.byteLength);
         }
 
-        idatContent.set([FILTER_TYPE], i);
+        idatContent.set([0x00], i);
         idatContent.set(data.subarray(j, j += bytePerWidth - offset), i + offset);
     }
 
