@@ -1,9 +1,14 @@
 {
-    "name": "png_mimic",
+    "name": "@dojyorin/png-mimic",
     "license": "MIT",
     "version": "2.0.0",
     "lock": false,
     "unstable": [],
+    "permissions": {
+        "default": {
+            "read": true
+        }
+    },
     "imports": {
         "@std/assert": "jsr:@std/assert@1.0.18"
     },
@@ -16,6 +21,6 @@
         ]
     },
     "tasks": {
-        "test": "deno test -Rr --clean --parallel"
+        "test": "deno test -Pr --clean --parallel"
     }
 }
