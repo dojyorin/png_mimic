@@ -4,22 +4,27 @@
 ![shields:license](https://img.shields.io/github/license/dojyorin/png_mimic)
 ![shields:release](https://img.shields.io/github/release/dojyorin/png_mimic)
 
-Mimic binary to PNG.
-
 ## Details
 A PNG tool that embed binary in IDAT chunk to generate image and extract binary from IDAT chunk within image.
 
-Due to image size, IDAT chunk size may be larger than binary size, in which case difference will be padded with zero.
-
-Output image is square, with width and height approximately equal to square root of binary size divided 3.
-
 ## Specification
-|Property|Value|
-|:--|:--|
-|Color|24 bits RGB|
-|Alpha|No|
-|Filter per Line|No|
-|Chunks|`IHDR` `IDAT` `IEND`|
+- Color Depth: 8 bits
+- Color Type: RGB
+- Filter: No
+
+Common:
+
+- First 4 bytes are body size, followed by body itself, with remainder from end of body to last pixel with zero-padded.
+
+Input:
+
+- If multiple IDAT chunks exist, only first one is read.
+- Must be least 2 pixels.
+
+Output:
+
+- Image is square.
 
 ## API
-See [Deno Document](https://deno.land/x/png_mimic/mod.ts) for details.
+### `encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
+### `decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
