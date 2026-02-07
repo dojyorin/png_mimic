@@ -8,7 +8,7 @@
 A tool to extract raw data from PNG or generate PNG from raw data.
 
 ## Specification
-Image parameters supported by this tool are:
+Image formats supported by this tool are:
 
 - Color Depth: 8 bits
 - Color Type: RGB
