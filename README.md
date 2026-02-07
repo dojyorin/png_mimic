@@ -13,6 +13,9 @@ Image formats supported by this tool are:
 - Color Depth: 8 bits
 - Color Type: RGB
 - Filter: No
+- Chunks: IHDR, IDAT, IEND
+
+Only simplest minimum chunk configuration consisting of only one IDAT is supported.
 
 ### Byte Structure
 Byte structure of raw data stored in IDAT chunk are:
@@ -24,14 +27,6 @@ Byte structure of raw data stored in IDAT chunk are:
 |4 + {Length} + 1|Last|Pad|Zero padding.|
 
 In most cases, number of pixels is set larger than body size, and since body size and number of pixels rarely match exactly, remaining pixels are padded with zeros.
-
-### Other
-
-- If multiple IDAT chunks exist in input image, only first one is read.
-- Input image must be at least 2 pixels.
-    - Because 1 pixel (3 bytes) cannot store body size.
-- Output image is square.
-    - To simplify calculation of number of pixels required.
 
 ## API
 - `encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`

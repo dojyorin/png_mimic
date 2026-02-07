@@ -103,15 +103,6 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
     const pngView = new DataView(png.buffer);
 
-    const width = pngView.getUint32(IHDR_CONTENT_START_BYTE);
-    const height = pngView.getUint32(IHDR_CONTENT_START_BYTE + 4);
-
-    if (width * height < 2) {
-        throw new Error("Must be at least 2 pixels.");
-    }
-
-    const isWidthOnePixel = width === 1;
-
     if (
         pngView.getUint32(IHDR_START_BYTE) !== 0x0000000D ||
         pngView.getUint32(IHDR_TYPE_START_BYTE) !== 0x49484452 ||
@@ -121,6 +112,15 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     ) {
         throw new Error("Invalid IHDR chunk.");
     }
+
+    const width = pngView.getUint32(IHDR_CONTENT_START_BYTE);
+    const height = pngView.getUint32(IHDR_CONTENT_START_BYTE + 4);
+
+    if (width * height < 2) {
+        throw new Error("Must be at least 2 pixels.");
+    }
+
+    const isWidthOnePixel = width === 1;
 
     const idatLength = FIXED_CHUNK_LENGTH + pngView.getUint32(IDAT_START_BYTE);
     const idatContentEndByte = IDAT_START_BYTE + idatLength - 4;
