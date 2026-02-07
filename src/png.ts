@@ -1,5 +1,5 @@
 const BYTE_PER_PIXEL = 3;
-const CHUNK_FIXED_LENGTH = 12;
+const FIXED_CHUNK_LENGTH = 12;
 
 const MAGIC_LENGTH = 8;
 const MAGIC_HEX = "89504E470D0A1A0A";
@@ -53,7 +53,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
 
     const idatContentCompressed = await new Response(new Response(idatContent).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
 
-    const idatLength = CHUNK_FIXED_LENGTH + idatContentCompressed.byteLength;
+    const idatLength = FIXED_CHUNK_LENGTH + idatContentCompressed.byteLength;
 
     const png = new Uint8Array(MAGIC_LENGTH + IHDR_LENGTH + idatLength + IEND_LENGTH);
     const pngView = new DataView(png.buffer);
@@ -124,7 +124,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
                 return i;
             }
 
-            i += CHUNK_FIXED_LENGTH + pngView.getUint32(i);
+            i += FIXED_CHUNK_LENGTH + pngView.getUint32(i);
         }
 
         throw new Error("IDAT chunk not found.");
@@ -132,7 +132,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
     const idatTypeStartByte = idatStartByte + 4;
     const idatContentStartByte = idatStartByte + 8;
-    const idatContentEndByte = idatStartByte + CHUNK_FIXED_LENGTH + pngView.getUint32(idatStartByte) - 4;
+    const idatContentEndByte = idatStartByte + FIXED_CHUNK_LENGTH + pngView.getUint32(idatStartByte) - 4;
 
     if (pngView.getInt32(idatContentEndByte) !== crc32(png.subarray(idatTypeStartByte, idatContentEndByte))) {
         throw new Error("IDAT chunk CRC not match.");
