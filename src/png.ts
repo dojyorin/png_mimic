@@ -1,6 +1,8 @@
 const BYTE_PER_PIXEL = 3;
 const FIXED_CHUNK_LENGTH = 12;
 
+const FILTER_TYPE = 0;
+
 const MAGIC_LENGTH = 8;
 const MAGIC_HEX = "89504E470D0A1A0A";
 const IEND_LENGTH = 12;
@@ -47,7 +49,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
 
         const offset = !i ? 5 : 1;
 
-        idatContent.set([0x00], i);
+        idatContent.set([FILTER_TYPE], i);
         idatContent.set(data.subarray(j, j += bytePerWidth - offset), i + offset);
     }
 
@@ -147,7 +149,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const data = new Uint8Array(isWidthOnePixel ? (((idatContentView.getUint32(1) >>> 8) << 8) | idatContentView.getUint8(6)) >>> 0 : idatContentView.getUint32(1));
 
     for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
-        if (idatContentView.getUint8(i) !== 0x00) {
+        if (idatContentView.getUint8(i) !== FILTER_TYPE) {
             throw new Error("Invalid filter type.");
         }
 
