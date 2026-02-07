@@ -133,9 +133,10 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("IDAT chunk not found.");
     })();
 
+    const idatLength = FIXED_CHUNK_LENGTH + pngView.getUint32(idatStartByte);
     const idatTypeStartByte = idatStartByte + 4;
     const idatContentStartByte = idatStartByte + 8;
-    const idatContentEndByte = idatStartByte + FIXED_CHUNK_LENGTH + pngView.getUint32(idatStartByte) - 4;
+    const idatContentEndByte = idatStartByte + idatLength - 4;
 
     if (pngView.getInt32(idatContentEndByte) !== crc32(png.subarray(idatTypeStartByte, idatContentEndByte))) {
         throw new Error("IDAT chunk CRC not match.");
