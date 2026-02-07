@@ -103,7 +103,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const height = pngView.getUint32(IHDR_CONTENT_START_BYTE + 4);
 
     if (width * height < 2) {
-        throw new Error("Must be least 2 pixels.");
+        throw new Error("Must be at least 2 pixels.");
     }
 
     const isWidthOnePixel = width === 1;
