@@ -1,6 +1,7 @@
 const BYTE_PER_PIXEL = 3;
 const FIXED_CHUNK_LENGTH = 12;
 
+const FILTER_LENGTH = 1;
 const FILTER_TYPE = 0;
 
 const MAGIC_LENGTH = 8;
@@ -39,7 +40,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const width = Math.ceil(Math.sqrt((4 + data.byteLength) / BYTE_PER_PIXEL));
     const height = width;
 
-    const bytePerWidth = 1 + width * BYTE_PER_PIXEL;
+    const bytePerWidth = FILTER_LENGTH + width * BYTE_PER_PIXEL;
     const idatContent = new Uint8Array(bytePerWidth * height);
 
     for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
@@ -142,7 +143,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
     const idatContentCompressed = png.subarray(idatContentStartByte, idatContentEndByte);
 
-    const bytePerWidth = 1 + width * BYTE_PER_PIXEL;
+    const bytePerWidth = FILTER_LENGTH + width * BYTE_PER_PIXEL;
     const idatContent = await new Response(new Response(idatContentCompressed).body?.pipeThrough(new DecompressionStream("deflate"))).bytes();
     const idatContentView = new DataView(idatContent.buffer);
 
