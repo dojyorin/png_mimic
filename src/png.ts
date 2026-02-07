@@ -15,6 +15,10 @@ const IHDR_TYPE_START_BYTE = IHDR_START_BYTE + 4;
 const IHDR_CONTENT_START_BYTE = IHDR_START_BYTE + 8;
 const IHDR_CONTENT_END_BYTE = IHDR_START_BYTE + IHDR_LENGTH - 4;
 
+const IDAT_START_BYTE = MAGIC_LENGTH + IHDR_LENGTH;
+const IDAT_TYPE_START_BYTE = IDAT_START_BYTE + 4;
+const IDAT_CONTENT_START_BYTE = IDAT_START_BYTE + 8;
+
 function crc32(data: Uint8Array) {
     let hash = 0xFFFFFFFF;
 
@@ -57,6 +61,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const idatContentCompressed = await new Response(new Response(idatContent).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
 
     const idatLength = FIXED_CHUNK_LENGTH + idatContentCompressed.byteLength;
+    const idatContentEndByte = IDAT_START_BYTE + idatLength - 4;
 
     const png = new Uint8Array(MAGIC_LENGTH + IHDR_LENGTH + idatLength + IEND_LENGTH);
     const pngView = new DataView(png.buffer);
@@ -68,14 +73,10 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     pngView.setUint32(IHDR_CONTENT_START_BYTE + 4, height);
     pngView.setInt32(IHDR_CONTENT_END_BYTE, crc32(png.subarray(IHDR_TYPE_START_BYTE, IHDR_CONTENT_END_BYTE)));
 
-    const idatStartByte = MAGIC_LENGTH + IHDR_LENGTH;
-    const idatTypeStartByte = idatStartByte + 4;
-    const idatContentStartByte = idatStartByte + 8;
-    const idatContentEndByte = idatStartByte + idatLength - 4;
-    pngView.setUint32(idatStartByte, idatContentCompressed.byteLength);
-    png.set([0x49, 0x44, 0x41, 0x54], idatTypeStartByte);
-    png.set(idatContentCompressed, idatContentStartByte);
-    pngView.setInt32(idatContentEndByte, crc32(png.subarray(idatTypeStartByte, idatContentEndByte)));
+    pngView.setUint32(IDAT_START_BYTE, idatContentCompressed.byteLength);
+    png.set([0x49, 0x44, 0x41, 0x54], IDAT_TYPE_START_BYTE);
+    png.set(idatContentCompressed, IDAT_CONTENT_START_BYTE);
+    pngView.setInt32(idatContentEndByte, crc32(png.subarray(IDAT_TYPE_START_BYTE, idatContentEndByte)));
 
     png.set(Uint8Array.fromHex(IEND_HEX), png.byteLength - IEND_LENGTH);
 
@@ -121,28 +122,17 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("Invalid IHDR chunk.");
     }
 
-    const idatStartByte = (() => {
-        for (let i = MAGIC_LENGTH + IHDR_LENGTH; i < (png.byteLength - IEND_LENGTH);) {
-            if (pngView.getUint32(i + 4) === 0x49444154) {
-                return i;
-            }
+    const idatLength = FIXED_CHUNK_LENGTH + pngView.getUint32(IDAT_START_BYTE);
+    const idatContentEndByte = IDAT_START_BYTE + idatLength - 4;
 
-            i += FIXED_CHUNK_LENGTH + pngView.getUint32(i);
-        }
-
-        throw new Error("IDAT chunk not found.");
-    })();
-
-    const idatLength = FIXED_CHUNK_LENGTH + pngView.getUint32(idatStartByte);
-    const idatTypeStartByte = idatStartByte + 4;
-    const idatContentStartByte = idatStartByte + 8;
-    const idatContentEndByte = idatStartByte + idatLength - 4;
-
-    if (pngView.getInt32(idatContentEndByte) !== crc32(png.subarray(idatTypeStartByte, idatContentEndByte))) {
-        throw new Error("IDAT chunk CRC not match.");
+    if (
+        pngView.getUint32(IDAT_TYPE_START_BYTE) !== 0x49444154 ||
+        pngView.getInt32(idatContentEndByte) !== crc32(png.subarray(IDAT_TYPE_START_BYTE, idatContentEndByte))
+    ) {
+        throw new Error("Invalid IDAT chunk.");
     }
 
-    const idatContentCompressed = png.subarray(idatContentStartByte, idatContentEndByte);
+    const idatContentCompressed = png.subarray(IDAT_CONTENT_START_BYTE, idatContentEndByte);
 
     const bytePerWidth = FILTER_LENGTH + width * BYTE_PER_PIXEL;
     const idatContent = await new Response(new Response(idatContentCompressed).body?.pipeThrough(new DecompressionStream("deflate"))).bytes();
