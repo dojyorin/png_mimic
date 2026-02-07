@@ -19,7 +19,7 @@ function crc32(data: Uint8Array) {
 
 /**
  * Generate png image from binary.
- * Output format is 24 bits RGB with no filter.
+ * Output format is 8 bits RGB with no filter.
  * Output image is square.
  * @example
  * ```ts
@@ -72,7 +72,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
 
 /**
  * Extract binary from png image.
- * Input format is 24 bits RGB with no filter.
+ * Input format is 8 bits RGB with no filter.
  * @example
  * ```ts
  * const bin = await Deno.readFile("./example");
