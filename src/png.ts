@@ -19,13 +19,13 @@ function crc32(data: Uint8Array) {
 
 /**
  * Generate png image from binary.
- * Output format is 24 bits RGB.
+ * Output format is 24 bits RGB with no filter.
  * Output image is square.
  * @example
  * ```ts
- * const bin = await Deno.readFile("./file");
- * const encode = await encode(bin);
- * const decode = await decode(encode);
+ * const bin = await Deno.readFile("./example");
+ * const png = await encode(bin);
+ * const bin_ = await decode(png);
  * ```
  */
 export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
@@ -72,12 +72,12 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
 
 /**
  * Extract binary from png image.
- * Input format is 24 bits RGB.
+ * Input format is 24 bits RGB with no filter.
  * @example
  * ```ts
- * const bin = await Deno.readFile("./file");
- * const encode = await encode(bin);
- * const decode = await decode(encode);
+ * const bin = await Deno.readFile("./example");
+ * const png = await encode(bin);
+ * const bin_ = await decode(png);
  * ```
  */
 export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
