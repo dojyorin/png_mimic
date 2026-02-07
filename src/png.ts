@@ -18,6 +18,59 @@ function crc32(data: Uint8Array) {
 }
 
 /**
+ * Generate png image from binary.
+ * Output format is 24 bits RGB.
+ * Output image is square.
+ * @example
+ * ```ts
+ * const bin = await Deno.readFile("./file");
+ * const encode = await encode(bin);
+ * const decode = await decode(encode);
+ * ```
+ */
+export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+    const width = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT + data.byteLength) / BYTE_PER_PIXEL));
+    const height = width;
+
+    const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
+    const idatContent = new Uint8Array(bytePerWidth * height);
+
+    for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
+        if (!i) {
+            new DataView(idatContent.buffer).setUint32(1, data.byteLength);
+        }
+
+        const offset = !i ? 5 : 1;
+
+        idatContent.set([0x00], i);
+        idatContent.set(data.subarray(j, j += bytePerWidth - offset), i + offset);
+    }
+
+    const idatContentCompressed = await new Response(new Response(idatContent).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
+
+    const idatLength = Uint32Array.BYTES_PER_ELEMENT * 3 + idatContentCompressed.byteLength;
+
+    const png = new Uint8Array(MAGIC_LENGTH + IHDR_LENGTH + idatLength + IEND_LENGTH);
+    const pngView = new DataView(png.buffer);
+
+    png.set(Uint8Array.fromHex(MAGIC_HEX), 0);
+
+    png.set([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], MAGIC_LENGTH);
+    pngView.setUint32(MAGIC_LENGTH + 8, width);
+    pngView.setUint32(MAGIC_LENGTH + 12, height);
+    pngView.setInt32(MAGIC_LENGTH + 21, crc32(png.subarray(MAGIC_LENGTH + 4, MAGIC_LENGTH + 21)));
+
+    pngView.setUint32(MAGIC_LENGTH + IHDR_LENGTH, idatContentCompressed.byteLength);
+    png.set([0x49, 0x44, 0x41, 0x54], MAGIC_LENGTH + IHDR_LENGTH + 4);
+    png.set(idatContentCompressed, MAGIC_LENGTH + IHDR_LENGTH + 8);
+    pngView.setInt32(MAGIC_LENGTH + IHDR_LENGTH + idatLength - 4, crc32(png.subarray(MAGIC_LENGTH + IHDR_LENGTH + 4, MAGIC_LENGTH + IHDR_LENGTH + idatLength - 4)));
+
+    png.set(Uint8Array.fromHex(IEND_HEX), MAGIC_LENGTH + IHDR_LENGTH + idatLength);
+
+    return png;
+}
+
+/**
  * Extract binary from png image.
  * Input format is 24 bits RGB.
  * @example
@@ -106,57 +159,4 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     }
 
     return data;
-}
-
-/**
- * Generate png image from binary.
- * Output format is 24 bits RGB.
- * Output image is square.
- * @example
- * ```ts
- * const bin = await Deno.readFile("./file");
- * const encode = await encode(bin);
- * const decode = await decode(encode);
- * ```
- */
-export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-    const width = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT + data.byteLength) / BYTE_PER_PIXEL));
-    const height = width;
-
-    const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
-    const idatContent = new Uint8Array(bytePerWidth * height);
-
-    for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
-        if (!i) {
-            new DataView(idatContent.buffer).setUint32(1, data.byteLength);
-        }
-
-        const offset = !i ? 5 : 1;
-
-        idatContent.set([0x00], i);
-        idatContent.set(data.subarray(j, j += bytePerWidth - offset), i + offset);
-    }
-
-    const idatContentCompressed = await new Response(new Response(idatContent).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
-
-    const idatLength = Uint32Array.BYTES_PER_ELEMENT * 3 + idatContentCompressed.byteLength;
-
-    const png = new Uint8Array(MAGIC_LENGTH + IHDR_LENGTH + idatLength + IEND_LENGTH);
-    const pngView = new DataView(png.buffer);
-
-    png.set(Uint8Array.fromHex(MAGIC_HEX), 0);
-
-    png.set([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], MAGIC_LENGTH);
-    pngView.setUint32(MAGIC_LENGTH + 8, width);
-    pngView.setUint32(MAGIC_LENGTH + 12, height);
-    pngView.setInt32(MAGIC_LENGTH + 21, crc32(png.subarray(MAGIC_LENGTH + 4, MAGIC_LENGTH + 21)));
-
-    pngView.setUint32(MAGIC_LENGTH + IHDR_LENGTH, idatContentCompressed.byteLength);
-    png.set([0x49, 0x44, 0x41, 0x54], MAGIC_LENGTH + IHDR_LENGTH + 4);
-    png.set(idatContentCompressed, MAGIC_LENGTH + IHDR_LENGTH + 8);
-    pngView.setInt32(MAGIC_LENGTH + IHDR_LENGTH + idatLength - 4, crc32(png.subarray(MAGIC_LENGTH + IHDR_LENGTH + 4, MAGIC_LENGTH + IHDR_LENGTH + idatLength - 4)));
-
-    png.set(Uint8Array.fromHex(IEND_HEX), MAGIC_LENGTH + IHDR_LENGTH + idatLength);
-
-    return png;
 }
