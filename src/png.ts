@@ -35,7 +35,7 @@ function crc32(data: Uint8Array) {
  * Generate png image from binary.
  * @example
  * ```ts
- * const bin = await Deno.readFile("./example");
+ * const bin = crypto.getRandomValues(new Uint8Array(65536));
  * const png = await encode(bin);
  * const bin_ = await decode(png);
  * ```
@@ -87,7 +87,7 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
  * Extract binary from png image.
  * @example
  * ```ts
- * const bin = await Deno.readFile("./example");
+ * const bin = crypto.getRandomValues(new Uint8Array(65536));
  * const png = await encode(bin);
  * const bin_ = await decode(png);
  * ```
