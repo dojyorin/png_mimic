@@ -1,9 +1,16 @@
 const BYTE_PER_PIXEL = 3;
+const CHUNK_FIXED_LENGTH = 12;
+
 const MAGIC_HEX = "89504E470D0A1A0A";
 const MAGIC_LENGTH = 8;
-const IHDR_LENGTH = 25;
 const IEND_HEX = "0000000049454E44AE426082";
 const IEND_LENGTH = 12;
+
+const IHDR_LENGTH = 25;
+const IHDR_START_BYTE = MAGIC_LENGTH;
+const IHDR_TYPE_START_BYTE = IHDR_START_BYTE + 4;
+const IHDR_CONTENT_START_BYTE = IHDR_START_BYTE + 8;
+const IHDR_CONTENT_END_BYTE = IHDR_START_BYTE + IHDR_LENGTH - 4;
 
 function crc32(data: Uint8Array) {
     let hash = 0xFFFFFFFF;
@@ -27,10 +34,10 @@ function crc32(data: Uint8Array) {
  * ```
  */
 export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
-    const width = Math.ceil(Math.sqrt((Uint32Array.BYTES_PER_ELEMENT + data.byteLength) / BYTE_PER_PIXEL));
+    const width = Math.ceil(Math.sqrt((4 + data.byteLength) / BYTE_PER_PIXEL));
     const height = width;
 
-    const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
+    const bytePerWidth = 1 + width * BYTE_PER_PIXEL;
     const idatContent = new Uint8Array(bytePerWidth * height);
 
     for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
@@ -46,24 +53,28 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
 
     const idatContentCompressed = await new Response(new Response(idatContent).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
 
-    const idatLength = Uint32Array.BYTES_PER_ELEMENT * 3 + idatContentCompressed.byteLength;
+    const idatLength = CHUNK_FIXED_LENGTH + idatContentCompressed.byteLength;
 
     const png = new Uint8Array(MAGIC_LENGTH + IHDR_LENGTH + idatLength + IEND_LENGTH);
     const pngView = new DataView(png.buffer);
 
     png.set(Uint8Array.fromHex(MAGIC_HEX), 0);
 
-    png.set([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], MAGIC_LENGTH);
-    pngView.setUint32(MAGIC_LENGTH + 8, width);
-    pngView.setUint32(MAGIC_LENGTH + 12, height);
-    pngView.setInt32(MAGIC_LENGTH + 21, crc32(png.subarray(MAGIC_LENGTH + 4, MAGIC_LENGTH + 21)));
+    png.set([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], IHDR_START_BYTE);
+    pngView.setUint32(IHDR_CONTENT_START_BYTE, width);
+    pngView.setUint32(IHDR_CONTENT_START_BYTE + 4, height);
+    pngView.setInt32(IHDR_CONTENT_END_BYTE, crc32(png.subarray(IHDR_TYPE_START_BYTE, IHDR_CONTENT_END_BYTE)));
 
-    pngView.setUint32(MAGIC_LENGTH + IHDR_LENGTH, idatContentCompressed.byteLength);
-    png.set([0x49, 0x44, 0x41, 0x54], MAGIC_LENGTH + IHDR_LENGTH + 4);
-    png.set(idatContentCompressed, MAGIC_LENGTH + IHDR_LENGTH + 8);
-    pngView.setInt32(MAGIC_LENGTH + IHDR_LENGTH + idatLength - 4, crc32(png.subarray(MAGIC_LENGTH + IHDR_LENGTH + 4, MAGIC_LENGTH + IHDR_LENGTH + idatLength - 4)));
+    const idatStartByte = MAGIC_LENGTH + IHDR_LENGTH;
+    const idatTypeStartByte = idatStartByte + 4;
+    const idatContentStartByte = idatStartByte + 8;
+    const idatContentEndByte = idatStartByte + idatLength - 4;
+    pngView.setUint32(idatStartByte, idatContentCompressed.byteLength);
+    png.set([0x49, 0x44, 0x41, 0x54], idatTypeStartByte);
+    png.set(idatContentCompressed, idatContentStartByte);
+    pngView.setInt32(idatContentEndByte, crc32(png.subarray(idatTypeStartByte, idatContentEndByte)));
 
-    png.set(Uint8Array.fromHex(IEND_HEX), MAGIC_LENGTH + IHDR_LENGTH + idatLength);
+    png.set(Uint8Array.fromHex(IEND_HEX), png.byteLength - IEND_LENGTH);
 
     return png;
 }
@@ -113,13 +124,13 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
                 return i;
             }
 
-            i += Uint32Array.BYTES_PER_ELEMENT * 3 + pngView.getUint32(i);
+            i += CHUNK_FIXED_LENGTH + pngView.getUint32(i);
         }
 
         throw new Error("IDAT chunk not found.");
     })();
 
-    const idatEndByte = idatStartByte + Uint32Array.BYTES_PER_ELEMENT * 3 + pngView.getUint32(idatStartByte);
+    const idatEndByte = idatStartByte + CHUNK_FIXED_LENGTH + pngView.getUint32(idatStartByte);
 
     if (pngView.getInt32(idatEndByte - 4) !== crc32(png.subarray(idatStartByte + 4, idatEndByte - 4))) {
         throw new Error("IDAT chunk CRC not match.");
@@ -127,7 +138,7 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
     const idatContentCompressed = png.subarray(idatStartByte + 8, idatEndByte - 4);
 
-    const bytePerWidth = Uint8Array.BYTES_PER_ELEMENT + width * BYTE_PER_PIXEL;
+    const bytePerWidth = 1 + width * BYTE_PER_PIXEL;
     const idatContent = await new Response(new Response(idatContentCompressed).body?.pipeThrough(new DecompressionStream("deflate"))).bytes();
     const idatContentView = new DataView(idatContent.buffer);
 
