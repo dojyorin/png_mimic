@@ -20,7 +20,7 @@ const png = await encode(bin);
 // Extract original binary from PNG image.
 const bin_ = await decode(png);
 
-// Output PNG image is a `Uint8Array` so it can be written to a file or displayed as a DataURL.
+// Output PNG image is `Uint8Array` so it can be written to file or displayed as a DataURL.
 await Deno.writeFile("./example.png", png);
 
 // Of course, it can also be run in browser.
