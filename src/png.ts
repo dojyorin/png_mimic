@@ -99,8 +99,8 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
     const pngView = new DataView(png.buffer);
 
-    const width = pngView.getUint32(MAGIC_LENGTH + 8);
-    const height = pngView.getUint32(MAGIC_LENGTH + 12);
+    const width = pngView.getUint32(IHDR_CONTENT_START_BYTE);
+    const height = pngView.getUint32(IHDR_CONTENT_START_BYTE + 4);
 
     if (width * height < 2) {
         throw new Error("Must be least 2 pixels.");
@@ -109,11 +109,11 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const isWidthOnePixel = width === 1;
 
     if (
-        pngView.getUint32(MAGIC_LENGTH) !== 0x0000000D ||
-        pngView.getUint32(MAGIC_LENGTH + 4) !== 0x49484452 ||
-        pngView.getUint32(MAGIC_LENGTH + 16) !== 0x08020000 ||
-        pngView.getUint8(MAGIC_LENGTH + 20) !== 0x00 ||
-        pngView.getInt32(MAGIC_LENGTH + 21) !== crc32(png.subarray(MAGIC_LENGTH + 4, MAGIC_LENGTH + 21))
+        pngView.getUint32(IHDR_START_BYTE) !== 0x0000000D ||
+        pngView.getUint32(IHDR_TYPE_START_BYTE) !== 0x49484452 ||
+        pngView.getUint32(IHDR_CONTENT_START_BYTE + 8) !== 0x08020000 ||
+        pngView.getUint8(IHDR_CONTENT_START_BYTE + 12) !== 0x00 ||
+        pngView.getInt32(IHDR_CONTENT_END_BYTE) !== crc32(png.subarray(IHDR_TYPE_START_BYTE, IHDR_CONTENT_END_BYTE))
     ) {
         throw new Error("Invalid IHDR chunk.");
     }
@@ -130,13 +130,15 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
         throw new Error("IDAT chunk not found.");
     })();
 
-    const idatEndByte = idatStartByte + CHUNK_FIXED_LENGTH + pngView.getUint32(idatStartByte);
+    const idatTypeStartByte = idatStartByte + 4;
+    const idatContentStartByte = idatStartByte + 8;
+    const idatContentEndByte = idatStartByte + CHUNK_FIXED_LENGTH + pngView.getUint32(idatStartByte) - 4;
 
-    if (pngView.getInt32(idatEndByte - 4) !== crc32(png.subarray(idatStartByte + 4, idatEndByte - 4))) {
+    if (pngView.getInt32(idatContentEndByte) !== crc32(png.subarray(idatTypeStartByte, idatContentEndByte))) {
         throw new Error("IDAT chunk CRC not match.");
     }
 
-    const idatContentCompressed = png.subarray(idatStartByte + 8, idatEndByte - 4);
+    const idatContentCompressed = png.subarray(idatContentStartByte, idatContentEndByte);
 
     const bytePerWidth = 1 + width * BYTE_PER_PIXEL;
     const idatContent = await new Response(new Response(idatContentCompressed).body?.pipeThrough(new DecompressionStream("deflate"))).bytes();
