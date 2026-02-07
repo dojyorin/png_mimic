@@ -5,25 +5,33 @@
 ![shields:release](https://img.shields.io/github/release/dojyorin/png_mimic)
 
 ## Details
-A PNG tool that embed binary in IDAT chunk to generate image and extract binary from IDAT chunk within image.
+A tool to extract raw data from PNG or generate PNG from raw data.
 
 ## Specification
+Image parameters supported by this tool are:
+
 - Color Depth: 8 bits
 - Color Type: RGB
 - Filter: No
 
-Common:
+### Byte Structure
+Byte structure of raw data stored in IDAT chunk are:
 
-- First 4 bytes are body size, followed by body itself, with remainder from end of body to last pixel with zero-padded.
+|Start byte|End byte|Field|Details|
+|:--|:--|:--|:--|
+|0|3|Length|Store file size as a uint32.|
+|4|4 + {Length}|Body|This is file content.|
+|4 + {Length} + 1|Last|Pad|Zero padding.|
 
-Input:
+In most cases, number of pixels is set larger than body size, and since body size and number of pixels rarely match exactly, remaining pixels are padded with zeros.
 
-- If multiple IDAT chunks exist, only first one is read.
-- Must be least 2 pixels.
+### Other
 
-Output:
-
-- Image is square.
+- If multiple IDAT chunks exist in input image, only first one is read.
+- Input image must be at least 2 pixels.
+    - Because 1 pixel (3 bytes) cannot store body size.
+- Output image is square.
+    - To simplify calculation of number of pixels required.
 
 ## API
 - `encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>>`
