@@ -20,6 +20,13 @@
             "./test/"
         ]
     },
+    "publish": {
+        "include": [
+            "./deno.json",
+            "./*.md",
+            "./src/"
+        ]
+    },
     "tasks": {
         "test": "deno test -Pr --clean --parallel"
     }
