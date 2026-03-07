@@ -19,7 +19,7 @@ const IDAT_START_BYTE = MAGIC_LENGTH + IHDR_LENGTH;
 const IDAT_TYPE_START_BYTE = IDAT_START_BYTE + 4;
 const IDAT_CONTENT_START_BYTE = IDAT_START_BYTE + 8;
 
-function crc32(data: Uint8Array) {
+function crc32(data: Uint8Array<ArrayBuffer>) {
     let hash = 0xFFFFFFFF;
 
     for (const n of data) {
