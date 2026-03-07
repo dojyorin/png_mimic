@@ -52,9 +52,10 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
         const offset = FILTER_LENGTH + (i ? 0 : 4);
         const bytePerWidthContent = bytePerWidth - offset;
+        const contentPerWidthStartByte = i + offset;
 
         idatContent.set([FILTER_TYPE], i);
-        idatContent.set(data.subarray(j, j += bytePerWidthContent), i + offset);
+        idatContent.set(data.subarray(j, j += bytePerWidthContent), contentPerWidthStartByte);
     }
 
     const idatContentCompressed = await new Response(new Response(idatContent).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
@@ -143,13 +144,14 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
 
         const offset = FILTER_LENGTH + (i ? 0 : 4);
         const bytePerWidthContent = bytePerWidth - offset;
+        const contentPerWidthStartByte = i + offset;
 
         if (j + bytePerWidthContent > data.byteLength) {
-            data.set(idatContent.subarray(i + offset, i + offset + data.byteLength - j), j);
+            data.set(idatContent.subarray(contentPerWidthStartByte, contentPerWidthStartByte + data.byteLength - j), j);
 
             break;
         } else {
-            data.set(idatContent.subarray(i + offset, i + bytePerWidth), j);
+            data.set(idatContent.subarray(contentPerWidthStartByte, i + bytePerWidth), j);
             j += bytePerWidthContent;
         }
     }
