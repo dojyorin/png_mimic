@@ -47,15 +47,14 @@ export async function encode(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<
     const bytePerWidth = FILTER_LENGTH + width * BYTE_PER_PIXEL;
     const idatContent = new Uint8Array(bytePerWidth * height);
 
-    for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
-        if (!i) {
-            new DataView(idatContent.buffer).setUint32(1, data.byteLength);
-        }
+    new DataView(idatContent.buffer).setUint32(FILTER_LENGTH, data.byteLength);
 
-        const offset = !i ? 5 : 1;
+    for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
+        const offset = FILTER_LENGTH + (i ? 0 : 4);
+        const bytePerWidthContent = bytePerWidth - offset;
 
         idatContent.set([FILTER_TYPE], i);
-        idatContent.set(data.subarray(j, j += bytePerWidth - offset), i + offset);
+        idatContent.set(data.subarray(j, j += bytePerWidthContent), i + offset);
     }
 
     const idatContentCompressed = await new Response(new Response(idatContent).body?.pipeThrough(new CompressionStream("deflate"))).bytes();
@@ -114,13 +113,11 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     }
 
     const width = pngView.getUint32(IHDR_CONTENT_START_BYTE);
-    const height = pngView.getUint32(IHDR_CONTENT_START_BYTE + 4);
+    const _height = pngView.getUint32(IHDR_CONTENT_START_BYTE + 4);
 
-    if (width * height < 2) {
-        throw new Error("Must be at least 2 pixels.");
+    if (width < 2) {
+        throw new Error("Must be at least 2 pixels wide.");
     }
-
-    const isWidthOnePixel = width === 1;
 
     const idatLength = FIXED_CHUNK_LENGTH + pngView.getUint32(IDAT_START_BYTE);
     const idatContentEndByte = IDAT_START_BYTE + idatLength - 4;
@@ -138,28 +135,24 @@ export async function decode(png: Uint8Array<ArrayBuffer>): Promise<Uint8Array<A
     const idatContent = await new Response(new Response(idatContentCompressed).body?.pipeThrough(new DecompressionStream("deflate"))).bytes();
     const idatContentView = new DataView(idatContent.buffer);
 
-    const data = new Uint8Array(isWidthOnePixel ? (((idatContentView.getUint32(1) >>> 8) << 8) | idatContentView.getUint8(6)) >>> 0 : idatContentView.getUint32(1));
+    const data = new Uint8Array(idatContentView.getUint32(FILTER_LENGTH));
 
     for (let i = 0, j = 0; i < idatContent.byteLength; i += bytePerWidth) {
         if (idatContentView.getUint8(i) !== FILTER_TYPE) {
             throw new Error("Invalid filter type.");
         }
 
-        if (!i && isWidthOnePixel) {
-            continue;
-        }
+        const offset = FILTER_LENGTH + (i ? 0 : 4);
+        const bytePerWidthContent = bytePerWidth - offset;
 
-        const offset = i === bytePerWidth && isWidthOnePixel ? 2 : !i ? 5 : 1;
-        const segment = idatContent.subarray(i + offset , i + bytePerWidth);
-
-        if (j + segment.byteLength > data.byteLength) {
-            data.set(segment.subarray(0, data.byteLength - j), j);
+        if (j + bytePerWidthContent > data.byteLength) {
+            data.set(idatContent.subarray(i + offset, i + offset + data.byteLength - j), j);
 
             break;
+        } else {
+            data.set(idatContent.subarray(i + offset, i + bytePerWidth), j);
+            j += bytePerWidthContent;
         }
-
-        data.set(segment, j);
-        j += segment.byteLength;
     }
 
     return data;
