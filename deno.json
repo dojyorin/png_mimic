@@ -6,17 +6,19 @@
     "imports": {
         "@std/assert": "jsr:@std/assert@1.0.19"
     },
-    "exports": "./src/mod.ts",
-    "test": {
-        "include": [
-            "./test/"
-        ]
+    "exports": {
+        ".": "./src/mod.ts"
     },
     "publish": {
         "include": [
             "./deno.json",
             "./*.md",
             "./src/"
+        ]
+    },
+    "test": {
+        "include": [
+            "./test/"
         ]
     },
     "tasks": {
