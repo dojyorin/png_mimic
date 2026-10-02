@@ -8,13 +8,6 @@
     "exports": {
         ".": "./src/mod.ts"
     },
-    "publish": {
-        "include": [
-            "./deno.json",
-            "./*.md",
-            "./src/"
-        ]
-    },
     "test": {
         "include": [
             "./test/"
@@ -22,5 +15,12 @@
     },
     "tasks": {
         "test": "deno test -R --parallel"
+    },
+    "publish": {
+        "include": [
+            "./deno.json",
+            "./*.md",
+            "./src/"
+        ]
     }
 }
