@@ -6,9 +6,7 @@
     "imports": {
         "@std/assert": "jsr:@std/assert@1.0.19"
     },
-    "exports": {
-        ".": "./src/mod.ts"
-    },
+    "exports": "./src/mod.ts",
     "test": {
         "include": [
             "./test/"
