@@ -1,4 +1,5 @@
 import {assertEquals} from "@std/assert";
+
 import {encode, decode} from "../src/png.ts";
 
 const [bin, png] = await Promise.all([
