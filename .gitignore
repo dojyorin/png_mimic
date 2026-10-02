@@ -1,1 +1,10 @@
+.tmp/
+.env
+*.gz
+*.tgz
+*.key
+*.crt
+*.cer
+*.csr
+
 deno.lock
